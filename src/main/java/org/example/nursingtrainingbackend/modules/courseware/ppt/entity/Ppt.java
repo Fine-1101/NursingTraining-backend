@@ -47,6 +47,11 @@ public class Ppt {
     private String originalUrl;
 
     /**
+     * 原始上传文件名
+     */
+    private String originalName;
+
+    /**
      * 总页数
      */
     private Integer pageCount;
@@ -72,9 +77,19 @@ public class Ppt {
     private Integer allowDownload;
 
     /**
-     * 状态：0-转码中 1-已发布 2-已下架
+     * 状态：0-草稿 1-已发布 2-已下架
      */
     private Integer status;
+
+    /**
+     * 原文件上传完成时间
+     */
+    private LocalDateTime uploadedAt;
+
+    /**
+     * 最近一次发布时间
+     */
+    private LocalDateTime publishedAt;
 
     /**
      * 上传人ID

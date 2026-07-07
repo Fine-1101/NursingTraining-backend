@@ -42,6 +42,21 @@ public class Article {
     private String coverUrl;
 
     /**
+     * 文章附件OSS地址
+     */
+    private String attachmentUrl;
+
+    /**
+     * 附件原始文件名
+     */
+    private String attachmentName;
+
+    /**
+     * 附件字节数
+     */
+    private Long attachmentSize;
+
+    /**
      * 浏览量
      */
     private Integer viewCount;
@@ -60,6 +75,11 @@ public class Article {
      * 状态：0-草稿 1-已发布 2-已下架
      */
     private Integer status;
+
+    /**
+     * 最近一次发布时间
+     */
+    private LocalDateTime publishedAt;
 
     /**
      * 创建人ID
