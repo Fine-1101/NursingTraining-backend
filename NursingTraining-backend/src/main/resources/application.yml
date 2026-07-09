@@ -43,11 +43,3 @@ app:
       password: ${REDIS_PASSWORD:}
       database: ${REDIS_DB:0}
       timeout: 3s
-
-oss:
-  endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
-  access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:LTAI5t6PWNynkY6eVmDCXGXQ}
-  access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:r0T5My2Ya1e1FSv2CnYwCgvMoQzWDR}
-  bucket-name: ${ALIYUN_OSS_BUCKET_NAME:shared-doc-backend}
-  # 文件访问域名（可选，默认使用endpoint）
-  domain: ${ALIYUN_OSS_DOMAIN:endpoint}
