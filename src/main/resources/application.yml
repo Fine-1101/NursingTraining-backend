@@ -22,9 +22,9 @@ mybatis-plus:
     map-underscore-to-camel-case: true
   global-config:
     db-config:
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
+      logic-delete-field: deletedAt
+      logic-delete-value:  "NOW()"
+      logic-not-delete-value: "NULL"
 
 app:
   jwt:
@@ -35,3 +35,15 @@ app:
   upload:
     max-size: ${APP_UPLOAD_MAX_BYTES:104857600}
     allowed-content-types: ${APP_UPLOAD_TYPES:image/jpeg,image/png,image/gif,application/pdf,video/mp4,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation}
+  vod:
+    access-key-id: ${ALIYUN_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
+    region-id: ${VOD_REGION_ID:cn-shanghai}
+    transcode-template-group-id: ${VOD_TRANSCODE_TEMPLATE_GROUP_ID:}
+
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+    access-key-id: ${ALIYUN_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:shared-doc-backend}
+    domain: ${ALIYUN_OSS_DOMAIN:}

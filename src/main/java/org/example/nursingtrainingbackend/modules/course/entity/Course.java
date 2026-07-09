@@ -1,4 +1,4 @@
-package org.example.nursingtrainingbackend.modules.courseware.video.entity;
+package org.example.nursingtrainingbackend.modules.course.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -9,41 +9,29 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("video")
-public class Video {
+@TableName("course")
+public class Course {
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
     private String title;
 
-    private String description;
+    private String summary;
 
     private String coverUrl;
 
-    private String videoUrl;
+    private Integer scopeType;
 
-    private String originalName;
+    private Long categoryId;
 
-    private Integer duration;
-
-    private Long fileSize;
-
-    private Integer allowDrag;
-
-    private Integer allowSpeed;
-
-    private Integer viewCount;
-
-    private Integer watchCount;
-
-    private Integer allowCache;
+    private Integer completionRule;
 
     private Integer status;
 
-    private LocalDateTime publishedAt;
-
     private Long createdBy;
+
+    private LocalDateTime publishedAt;
 
     private LocalDateTime createdAt;
 
@@ -52,5 +40,7 @@ public class Video {
     @TableLogic
     private LocalDateTime deletedAt;
 
-    private LocalDateTime uploadedAt;
+    private LocalDateTime startAt;
+
+    private LocalDateTime endAt;
 }
