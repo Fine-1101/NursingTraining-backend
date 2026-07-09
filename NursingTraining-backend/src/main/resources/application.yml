@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: nursing-training-backend
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/nursing?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:127315jj}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: ${APP_UPLOAD_MAX_FILE_SIZE:100MB}
+      max-request-size: ${APP_UPLOAD_MAX_REQUEST_SIZE:100MB}
+  jackson:
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+  sql:
+    init:
+      mode: never
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deletedAt
+      logic-delete-value: "NOW()"
+      logic-not-delete-value: "NULL"
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:nursing-training-secret-key-for-jwt-token-generation-2026}
+    expiration: ${JWT_EXPIRATION:2h}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  upload:
+    max-size: ${APP_UPLOAD_MAX_BYTES:104857600}
+    allowed-content-types: ${APP_UPLOAD_TYPES:image/jpeg,image/png,image/gif,application/pdf,video/mp4,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}
+      timeout: 3s
+
+oss:
+  endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+  access-key-id: ${ALIYUN_OSS_ACCESS_KEY_ID:LTAI5t6PWNynkY6eVmDCXGXQ}
+  access-key-secret: ${ALIYUN_OSS_ACCESS_KEY_SECRET:r0T5My2Ya1e1FSv2CnYwCgvMoQzWDR}
+  bucket-name: ${ALIYUN_OSS_BUCKET_NAME:shared-doc-backend}
+  # 文件访问域名（可选，默认使用endpoint）
+  domain: ${ALIYUN_OSS_DOMAIN:endpoint}
