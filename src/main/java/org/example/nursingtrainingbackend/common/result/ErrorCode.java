@@ -24,10 +24,6 @@ public enum ErrorCode {
     OSS_NOT_CONFIGURED(2004, "文件存储服务未配置", HttpStatus.INTERNAL_SERVER_ERROR),
     FILE_UPLOAD_FAILED(2005, "文件上传失败", HttpStatus.INTERNAL_SERVER_ERROR),
 
-    // ==================== 课程管理模块 (35xx) ====================
-    COURSE_NOT_FOUND(3501, "课程不存在", HttpStatus.NOT_FOUND),
-    COURSE_STATUS_NOT_DRAFT(3502, "仅草稿状态的课程可编辑", HttpStatus.BAD_REQUEST),
-
     // ==================== 类别管理模块 (3xxx) ====================
     CATEGORY_NOT_FOUND(3001, "类别不存在", HttpStatus.NOT_FOUND),
     CATEGORY_NAME_EXISTS(3002, "类别名称已存在", HttpStatus.BAD_REQUEST),
@@ -45,6 +41,28 @@ public enum ErrorCode {
     TAG_NAME_EXISTS(3102, "标签名称已存在", HttpStatus.BAD_REQUEST),
     TAG_HAS_COURSES(3103, "标签已关联课程，不能删除", HttpStatus.CONFLICT),
     TAG_BATCH_OPERATION_FAILED(3104, "批量操作失败，操作已全部回滚", HttpStatus.INTERNAL_SERVER_ERROR),
+
+
+
+
+
+    // ==================== 课程管理模块 (50xx) ====================
+    COURSE_NOT_FOUND(5001, "课程不存在", HttpStatus.NOT_FOUND),
+    COURSE_BASIC_INFO_INCOMPLETE(5002, "课程基础信息不完整", HttpStatus.BAD_REQUEST),
+    COURSE_TAG_LIMIT(5003, "标签最多选择 3 个且不能重复", HttpStatus.BAD_REQUEST),
+    COURSE_TAG_INVALID(5004, "标签不存在、已停用或已删除", HttpStatus.BAD_REQUEST),
+    COURSE_INSTRUCTOR_INVALID(5005, "讲师不存在、已停用或不是讲师角色", HttpStatus.BAD_REQUEST),
+    COURSE_DEPARTMENT_INVALID(5006, "部门列表不能为空、重复或包含停用部门", HttpStatus.BAD_REQUEST),
+    COURSE_CHAPTER_NOT_FOUND(5007, "章节不存在或不属于当前课程", HttpStatus.NOT_FOUND),
+    COURSE_CHAPTER_HAS_POINTS(5008, "章节下存在课程点，不能删除", HttpStatus.CONFLICT),
+    COURSE_POINT_NOT_FOUND(5009, "课程点不存在或不属于当前章节", HttpStatus.NOT_FOUND),
+    COURSE_POINT_NO_MEDIA(5010, "课程点至少关联一个有效课件", HttpStatus.BAD_REQUEST),
+    COURSE_MEDIA_INVALID(5011, "关联课件不存在、未发布或已删除", HttpStatus.BAD_REQUEST),
+    COURSE_SORT_DATA_INCOMPLETE(5012, "章节或课程点顺序数据不完整", HttpStatus.BAD_REQUEST),
+    COURSE_STRUCTURE_NOT_PUBLISHABLE(5013, "课程结构不满足发布条件", HttpStatus.CONFLICT),
+    COURSE_STATUS_INVALID(5014, "当前课程状态不允许该操作", HttpStatus.CONFLICT),
+    COURSE_COVER_URL_INVALID(5015, "课程封面 OSS 地址不合法", HttpStatus.BAD_REQUEST),
+    COURSE_NOT_DRAFT(5016, "课程已发布，不能按草稿规则删除", HttpStatus.CONFLICT),
 
     // ==================== 文章管理模块 (41xx) ====================
     ARTICLE_NOT_FOUND(4101, "文章不存在", HttpStatus.NOT_FOUND),
@@ -70,7 +88,15 @@ public enum ErrorCode {
     VIDEO_CALLBACK_SIGNATURE_INVALID(4011, "VOD回调签名无效", HttpStatus.BAD_REQUEST),
     VIDEO_STATUS_NO_CHANGE(4012, "视频业务状态无需重复修改", HttpStatus.BAD_REQUEST),
     VIDEO_BATCH_DELETE_FAILED(4013, "批量删除失败，操作已全部回滚", HttpStatus.INTERNAL_SERVER_ERROR),
-    VIDEO_TRANSCODE_SUBMIT_FAILED(4014, "提交转码任务失败", HttpStatus.INTERNAL_SERVER_ERROR);
+    VIDEO_TRANSCODE_SUBMIT_FAILED(4014, "提交转码任务失败", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // ==================== PPT 管理模块 (42xx) ====================
+
+    PPT_NOT_FOUND(4201, "PPT 不存在", HttpStatus.NOT_FOUND),
+    PPT_STATUS_INVALID(4202, "当前状态不允许该操作", HttpStatus.BAD_REQUEST),
+    PPT_HAS_COURSE(4203, "PPT 已关联课程，不能删除", HttpStatus.CONFLICT),
+    OSS_INVALID_URL(4204, "OSS 文件地址不合法", HttpStatus.BAD_REQUEST),
+    OSS_FILE_NOT_FOUND(4205, "原始文件不存在", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;

@@ -32,7 +32,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
-                .authorizeHttpRequests(authorize -> authorize.requestMatchers("/api/auth/login", "/error", "/static/**").permitAll()
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/api/auth/login", "/api/admin/login", "/error", "/static/**")
+                        .permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();
     }

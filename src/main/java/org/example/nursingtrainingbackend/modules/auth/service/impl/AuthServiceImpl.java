@@ -25,10 +25,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse login(LoginRequest request) {
         User user = userMapper.selectOne(Wrappers.<User>lambdaQuery().eq(User::getUsername, request.username()));
-        if (user == null
-
-                //|| !passwordEncoder.matches(request.password(), user.getPassword())
-        ) {
+        if (user == null ) {
             throw new BusinessException(ErrorCode.USERNAME_OR_PASSWORD_ERROR);
         }
         if (!Integer.valueOf(1).equals(user.getStatus())) {

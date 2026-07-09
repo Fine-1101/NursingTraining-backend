@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import org.jspecify.annotations.Nullable;
 
 import java.time.LocalDateTime;
 
@@ -74,4 +75,8 @@ public class User {
      * 软删除时间
      */
     private LocalDateTime deletedAt;
+
+    public @Nullable String getPassword() {
+        return password;
+    }
 }

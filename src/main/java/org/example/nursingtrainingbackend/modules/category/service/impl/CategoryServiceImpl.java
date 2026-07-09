@@ -269,7 +269,7 @@ public class CategoryServiceImpl implements CategoryService {
             } else {
                 boolean hasEnabledDesc = descendants.stream().anyMatch(d -> Integer.valueOf(1).equals(d.getStatus()));
                 if (hasEnabledDesc) {
-                    throw new BusinessException(ErrorCode.CATEGORY_HAS_ENABLED_DESCENDANTS);
+                    throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
                 }
             }
         } else if (oldStatus == 0 && newStatus == 1) {
@@ -323,7 +323,7 @@ public class CategoryServiceImpl implements CategoryService {
             } else {
                 boolean hasEnabledDesc = descendants.stream().anyMatch(d -> Integer.valueOf(1).equals(d.getStatus()));
                 if (hasEnabledDesc) {
-                    throw new BusinessException(ErrorCode.CATEGORY_HAS_ENABLED_DESCENDANTS);
+                    throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
                 }
             }
         }
@@ -451,7 +451,7 @@ public class CategoryServiceImpl implements CategoryService {
         while (cur != null && cur != 0L) {
             Category ancestor = categoryMapper.selectById(cur);
             if (ancestor != null && !Integer.valueOf(1).equals(ancestor.getStatus())) {
-                throw new BusinessException(ErrorCode.CATEGORY_ANCESTOR_DISABLED);
+                throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
             }
             cur = (ancestor != null) ? ancestor.getParentId() : null;
         }

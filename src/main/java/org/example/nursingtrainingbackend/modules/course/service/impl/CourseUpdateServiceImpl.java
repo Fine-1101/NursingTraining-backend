@@ -41,7 +41,7 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
         }
         // 仅草稿状态可编辑
         if (!Integer.valueOf(0).equals(course.getStatus())) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_NOT_DRAFT);
+            throw new BusinessException(ErrorCode.COURSE_STATUS_INVALID);
         }
 
         // 更新课程主表
@@ -90,5 +90,10 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
         vo.setCurrentStep(2);
         vo.setUpdatedAt(course.getUpdatedAt());
         return vo;
+    }
+
+    @Override
+    public Void NewCourse(Long courseId) {
+        return null;
     }
 }
