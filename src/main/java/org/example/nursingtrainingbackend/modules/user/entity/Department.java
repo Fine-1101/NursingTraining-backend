@@ -1,4 +1,4 @@
-package org.example.nursingtrainingbackend.modules.system.entity;
+package org.example.nursingtrainingbackend.modules.user.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;

@@ -3,9 +3,7 @@ package org.example.nursingtrainingbackend.modules.course.vo;
 import lombok.Data;
 
 @Data
-public class InstructorOptionVO {
+public class DepartmentOptionVO {
     Long id;
-    String realname;
-    String username;
-    String departmentName;
+    String name;
 }

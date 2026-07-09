@@ -24,6 +24,10 @@ public enum ErrorCode {
     OSS_NOT_CONFIGURED(2004, "文件存储服务未配置", HttpStatus.INTERNAL_SERVER_ERROR),
     FILE_UPLOAD_FAILED(2005, "文件上传失败", HttpStatus.INTERNAL_SERVER_ERROR),
 
+    // ==================== 课程管理模块 (35xx) ====================
+    COURSE_NOT_FOUND(3501, "课程不存在", HttpStatus.NOT_FOUND),
+    COURSE_STATUS_NOT_DRAFT(3502, "仅草稿状态的课程可编辑", HttpStatus.BAD_REQUEST),
+
     // ==================== 类别管理模块 (3xxx) ====================
     CATEGORY_NOT_FOUND(3001, "类别不存在", HttpStatus.NOT_FOUND),
     CATEGORY_NAME_EXISTS(3002, "类别名称已存在", HttpStatus.BAD_REQUEST),

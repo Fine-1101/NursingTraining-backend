@@ -21,6 +21,8 @@ public class Course {
 
     private String coverUrl;
 
+    private String learningObjective;
+
     private Integer scopeType;
 
     private Long categoryId;
