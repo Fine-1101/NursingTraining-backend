@@ -2,7 +2,6 @@ package org.example.nursingtrainingbackend.modules.courseware.article.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
@@ -99,6 +98,5 @@ public class Article {
     /**
      * 软删除时间
      */
-    @TableLogic
     private LocalDateTime deletedAt;
 }

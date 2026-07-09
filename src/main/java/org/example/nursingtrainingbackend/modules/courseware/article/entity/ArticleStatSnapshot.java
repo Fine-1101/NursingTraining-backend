@@ -1,20 +1,22 @@
 package org.example.nursingtrainingbackend.modules.courseware.article.entity;
 
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDate;
 
 /**
- * 文章管理统计快照实体类
+ * 文章统计快照实体类
  */
 @Data
 @TableName("article_stat_snapshot")
 public class ArticleStatSnapshot {
 
     /**
-     * 统计日期
+     * 统计日期（主键）
      */
+    @TableId
     private LocalDate statDate;
 
     /**
@@ -33,7 +35,7 @@ public class ArticleStatSnapshot {
     private Long draftArticles;
 
     /**
-     * 月度浏览量
+     * 当月累计浏览量
      */
     private Long monthlyViews;
 }
