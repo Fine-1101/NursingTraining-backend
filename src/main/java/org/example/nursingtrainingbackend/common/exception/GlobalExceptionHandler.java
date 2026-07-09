@@ -1,5 +1,6 @@
 package org.example.nursingtrainingbackend.common.exception;
 
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
@@ -18,7 +19,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
-    public Result<Void> handleBusiness(BusinessException exception) {
+    public Result<Void> handleBusiness(BusinessException exception, HttpServletResponse response) {
+        response.setStatus(exception.getErrorCode().getHttpStatus().value());
         return Result.failure(exception.getErrorCode(), exception.getMessage());
     }
 
