@@ -23,8 +23,8 @@ mybatis-plus:
   global-config:
     db-config:
       logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
+      logic-delete-value: "NOW()"
+      logic-not-delete-value: "NULL"
 
 app:
   jwt:
@@ -35,3 +35,10 @@ app:
   upload:
     max-size: ${APP_UPLOAD_MAX_BYTES:104857600}
     allowed-content-types: ${APP_UPLOAD_TYPES:image/jpeg,image/png,image/gif,application/pdf,video/mp4,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation}
+oss:
+  endpoint: oss-cn-beijing.aliyuncs.com
+  access-key-id: ${OSS_ACCESS_KEY_ID:}
+  access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+  bucket-name: shared-doc-backend
+  base-directory: nursing-training
+  policy-expiration: PT5M

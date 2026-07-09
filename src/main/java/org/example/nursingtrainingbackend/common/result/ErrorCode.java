@@ -63,7 +63,16 @@ public enum ErrorCode {
     VIDEO_CALLBACK_SIGNATURE_INVALID(4011, "VOD回调签名无效"),
     VIDEO_STATUS_NO_CHANGE(4012, "视频业务状态无需重复修改"),
     VIDEO_BATCH_DELETE_FAILED(4013, "批量删除失败，操作已全部回滚"),
-    VIDEO_TRANSCODE_SUBMIT_FAILED(4014, "提交转码任务失败");
+    VIDEO_TRANSCODE_SUBMIT_FAILED(4014, "提交转码任务失败"),
+
+    // ==================== PPT 管理模块 (42xx) ====================
+    PPT_NOT_FOUND(4201, "PPT 不存在"),
+    PPT_STATUS_INVALID(4202, "当前状态不允许该操作"),
+    PPT_HAS_COURSE(4203, "PPT 已关联课程，不能删除"),
+    OSS_INVALID_URL(4204, "OSS 文件地址不合法"),
+    OSS_FILE_NOT_FOUND(4205, "原始文件不存在");
+
+
 
     private final int code;
     private final String message;
