@@ -11,6 +11,7 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.service.PptService;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptDetailVO;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptListItem;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptOverviewVO;
 import org.example.nursingtrainingbackend.security.AuthenticatedUser;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -42,6 +43,14 @@ public class PptController {
             @RequestParam(defaultValue = "10") Integer size) {
         return Result.success(pptService.pagePpt(keyword, status, uploadedFrom,
                 uploadedTo, sortOrder, page, size));
+    }
+
+    /**
+     * 查询PPT概览统计（必须在 /{id} 之前，避免 "overview" 被当作 id 解析）
+     */
+    @GetMapping("/overview")
+    public Result<PptOverviewVO> getOverview() {
+        return Result.success(pptService.getOverview());
     }
 
     @GetMapping("/{id}")

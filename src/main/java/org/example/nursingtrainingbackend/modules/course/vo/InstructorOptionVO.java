@@ -4,8 +4,8 @@ import lombok.Data;
 
 @Data
 public class InstructorOptionVO {
-    Long id;
-    String realname;
-    String username;
-    String departmentName;
+    private Long id;
+    private String realname;
+    private String username;
+    private String departmentName;
 }

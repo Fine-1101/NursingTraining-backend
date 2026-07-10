@@ -6,6 +6,7 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.dto.UpdatePptRe
 import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptDetailVO;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptListItem;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptOverviewVO;
 
 public interface PptService {
 
@@ -23,4 +24,9 @@ public interface PptService {
     String getDownloadUrl(Long id, Integer expiresIn);
 
     void deletePpt(Long id);
+
+    /**
+     * 查询PPT概览统计数据
+     */
+    PptOverviewVO getOverview();
 }

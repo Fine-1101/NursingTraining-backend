@@ -27,6 +27,8 @@ public class Course {
 
     private Long categoryId;
 
+    private Long instructorId;
+
     private Integer completionRule;
 
     private Integer status;

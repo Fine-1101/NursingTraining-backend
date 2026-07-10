@@ -29,7 +29,7 @@ public record ArticleAttachmentProperties(
         Set<String> allowedMimeTypes
 ) {
     public ArticleAttachmentProperties {
-        if (objectPrefix == null) objectPrefix = "files/articles/attachments/";
+        if (objectPrefix == null) objectPrefix = "nursing-training/articles/attachments/";
         if (allowedDomains == null) allowedDomains = Set.of();
         if (allowedExtensions == null) allowedExtensions = Set.of(".pdf", ".doc", ".docx");
         if (allowedMimeTypes == null) allowedMimeTypes = Set.of(

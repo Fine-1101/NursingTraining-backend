@@ -18,6 +18,7 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.mapper.PptMappe
 import org.example.nursingtrainingbackend.modules.courseware.ppt.service.PptService;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptDetailVO;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptListItem;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptOverviewVO;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.springframework.scheduling.annotation.Async;
@@ -178,12 +179,29 @@ public class PptServiceImpl implements PptService {
     @Transactional
     public void deletePpt(Long id) {
         Ppt ppt = getPptById(id);
-        ppt.setDeletedAt(LocalDateTime.now());
-        pptMapper.updateById(ppt);
+        // 使用 MyBatis Plus 的 deleteById，配合 @TableLogic 自动执行:
+        // UPDATE ppt SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL
+        pptMapper.deleteById(id);
         asyncDeleteOssFile(ppt.getOriginalUrl());
     }
 
     // ==================== 私有方法 ====================
+
+    @Override
+    public PptOverviewVO getOverview() {
+        long totalPpts = pptMapper.countTotalPpts();
+        long publishedPpts = pptMapper.countPublishedPpts();
+        long draftPpts = pptMapper.countDraftPpts();
+        long monthlyAdded = pptMapper.countMonthlyAdded();
+
+        return PptOverviewVO.builder()
+                .totalPpts(totalPpts)
+                .publishedPpts(publishedPpts)
+                .draftPpts(draftPpts)
+                .monthlyAdded(monthlyAdded)
+                .monthOverMonth(null)
+                .build();
+    }
 
     private Ppt getPptById(Long id) {
         Ppt ppt = pptMapper.selectById(id);
