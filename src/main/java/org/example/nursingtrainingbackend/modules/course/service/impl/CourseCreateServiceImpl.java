@@ -53,7 +53,11 @@ public class CourseCreateServiceImpl implements CourseCreateService {
     @Autowired
     private CoursePointMapper coursePointMapper;
     @Autowired
-    private CoursePointMediaMapper coursePointMediaMapper;
+    private CoursePointArticleMapper coursePointArticleMapper;
+    @Autowired
+    private CoursePointPptMapper coursePointPptMapper;
+    @Autowired
+    private CoursePointVideoMapper coursePointVideoMapper;
     @Autowired
     private CategoryMapper categoryMapper;
 
@@ -467,8 +471,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         point.setUpdatedAt(LocalDateTime.now());
         coursePointMapper.updateById(point);
 
-        coursePointMediaMapper.delete(
-                Wrappers.<CoursePointMedia>lambdaQuery().eq(CoursePointMedia::getPointId, pointId));
+        deleteMediaAssociations(pointId);
         saveMediaAssociations(point.getId(), dto);
 
         return buildPointItem(point);
@@ -481,8 +484,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         if (point == null || !point.getCourseId().equals(courseId) || !point.getChapterId().equals(chapterId)) {
             throw new BusinessException(ErrorCode.COURSE_POINT_NOT_FOUND);
         }
-        coursePointMediaMapper.delete(
-                Wrappers.<CoursePointMedia>lambdaQuery().eq(CoursePointMedia::getPointId, pointId));
+        deleteMediaAssociations(pointId);
         coursePointMapper.deleteById(pointId);
     }
 
@@ -499,42 +501,58 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         }
     }
 
+    private void deleteMediaAssociations(Long pointId) {
+        coursePointArticleMapper.delete(
+                Wrappers.<CoursePointArticle>lambdaQuery().eq(CoursePointArticle::getCoursePointId, pointId));
+        coursePointPptMapper.delete(
+                Wrappers.<CoursePointPpt>lambdaQuery().eq(CoursePointPpt::getCoursePointId, pointId));
+        coursePointVideoMapper.delete(
+                Wrappers.<CoursePointVideo>lambdaQuery().eq(CoursePointVideo::getCoursePointId, pointId));
+    }
+
     private void saveMediaAssociations(Long pointId, CreatePointDTO dto) {
         if (dto.getArticleIds() != null) {
-            for (Long articleId : dto.getArticleIds()) {
-                CoursePointMedia m = new CoursePointMedia();
-                m.setPointId(pointId);
-                m.setMediaType("ARTICLE");
-                m.setMediaId(articleId);
-                coursePointMediaMapper.insert(m);
+            for (int i = 0; i < dto.getArticleIds().size(); i++) {
+                Long articleId = dto.getArticleIds().get(i);
+                CoursePointArticle rel = new CoursePointArticle();
+                rel.setCoursePointId(pointId);
+                rel.setArticleId(articleId);
+                rel.setSort(i + 1);
+                rel.setCreatedAt(LocalDateTime.now());
+                coursePointArticleMapper.insert(rel);
             }
         }
         if (dto.getVideoIds() != null) {
-            for (Long videoId : dto.getVideoIds()) {
-                CoursePointMedia m = new CoursePointMedia();
-                m.setPointId(pointId);
-                m.setMediaType("VIDEO");
-                m.setMediaId(videoId);
-                coursePointMediaMapper.insert(m);
+            for (int i = 0; i < dto.getVideoIds().size(); i++) {
+                Long videoId = dto.getVideoIds().get(i);
+                CoursePointVideo rel = new CoursePointVideo();
+                rel.setCoursePointId(pointId);
+                rel.setVideoId(videoId);
+                rel.setSort(i + 1);
+                rel.setCreatedAt(LocalDateTime.now());
+                coursePointVideoMapper.insert(rel);
             }
         }
         if (dto.getPptIds() != null) {
-            for (Long pptId : dto.getPptIds()) {
-                CoursePointMedia m = new CoursePointMedia();
-                m.setPointId(pointId);
-                m.setMediaType("PPT");
-                m.setMediaId(pptId);
-                coursePointMediaMapper.insert(m);
+            for (int i = 0; i < dto.getPptIds().size(); i++) {
+                Long pptId = dto.getPptIds().get(i);
+                CoursePointPpt rel = new CoursePointPpt();
+                rel.setCoursePointId(pointId);
+                rel.setPptId(pptId);
+                rel.setSort(i + 1);
+                rel.setCreatedAt(LocalDateTime.now());
+                coursePointPptMapper.insert(rel);
             }
         }
     }
 
     private CourseDetailVO.PointItem buildPointItem(CoursePoint point) {
-        List<CoursePointMedia> mediaList = coursePointMediaMapper.selectList(
-                Wrappers.<CoursePointMedia>lambdaQuery().eq(CoursePointMedia::getPointId, point.getId()));
-        int articleCount = (int) mediaList.stream().filter(m -> "ARTICLE".equals(m.getMediaType())).count();
-        int videoCount = (int) mediaList.stream().filter(m -> "VIDEO".equals(m.getMediaType())).count();
-        int pptCount = (int) mediaList.stream().filter(m -> "PPT".equals(m.getMediaType())).count();
+        int articleCount = coursePointArticleMapper.selectCount(
+                Wrappers.<CoursePointArticle>lambdaQuery().eq(CoursePointArticle::getCoursePointId, point.getId())).intValue();
+        int videoCount = coursePointVideoMapper.selectCount(
+                Wrappers.<CoursePointVideo>lambdaQuery().eq(CoursePointVideo::getCoursePointId, point.getId())).intValue();
+        int pptCount = coursePointPptMapper.selectCount(
+                Wrappers.<CoursePointPpt>lambdaQuery().eq(CoursePointPpt::getCoursePointId, point.getId())).intValue();
 
         CourseDetailVO.PointItem pi = new CourseDetailVO.PointItem();
         pi.setId(point.getId());

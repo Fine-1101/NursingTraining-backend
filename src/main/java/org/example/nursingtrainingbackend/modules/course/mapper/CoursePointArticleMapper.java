@@ -2,8 +2,8 @@ package org.example.nursingtrainingbackend.modules.course.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
-import org.example.nursingtrainingbackend.modules.course.entity.CoursePointMedia;
+import org.example.nursingtrainingbackend.modules.course.entity.CoursePointArticle;
 
 @Mapper
-public interface CoursePointMediaMapper extends BaseMapper<CoursePointMedia> {
+public interface CoursePointArticleMapper extends BaseMapper<CoursePointArticle> {
 }
