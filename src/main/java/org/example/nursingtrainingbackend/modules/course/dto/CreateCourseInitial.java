@@ -54,7 +54,7 @@ public class CreateCourseInitial {
     /**
      * 启用讲师ID
      */
-    @NotNull(message = "讲师ID不能为空")
+  @NotNull(message = "讲师ID不能为空")
     private Long instructorId;
 
     /**
