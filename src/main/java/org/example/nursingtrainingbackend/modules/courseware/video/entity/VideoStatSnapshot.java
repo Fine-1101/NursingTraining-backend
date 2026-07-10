@@ -1,5 +1,6 @@
 package org.example.nursingtrainingbackend.modules.courseware.video.entity;
 
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
@@ -15,6 +16,7 @@ public class VideoStatSnapshot {
     /**
      * 统计日期
      */
+    @TableId
     private LocalDate statDate;
 
     /**

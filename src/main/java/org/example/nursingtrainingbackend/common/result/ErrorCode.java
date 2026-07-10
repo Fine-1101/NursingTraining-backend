@@ -16,6 +16,8 @@ public enum ErrorCode {
     // ==================== 认证模块 (1xxx) ====================
     USERNAME_OR_PASSWORD_ERROR(1001, "用户名或密码错误", HttpStatus.BAD_REQUEST),
     USER_DISABLED(1002, "账号已被禁用", HttpStatus.FORBIDDEN),
+    USERNAME_EXISTS(1003, "用户名已存在", HttpStatus.BAD_REQUEST),
+    INVALID_ROLE_TYPE(1004, "角色类型不合法", HttpStatus.BAD_REQUEST),
 
     // ==================== 文件上传模块 (2xxx) ====================
     FILE_EMPTY(2001, "上传文件不能为空", HttpStatus.BAD_REQUEST),

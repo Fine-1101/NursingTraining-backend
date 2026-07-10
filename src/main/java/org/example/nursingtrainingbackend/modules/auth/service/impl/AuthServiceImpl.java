@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
 import org.example.nursingtrainingbackend.modules.auth.dto.LoginRequest;
+import org.example.nursingtrainingbackend.modules.auth.dto.RegisterRequest;
 import org.example.nursingtrainingbackend.modules.auth.service.AuthService;
 import org.example.nursingtrainingbackend.modules.auth.vo.LoginResponse;
 import org.example.nursingtrainingbackend.modules.auth.vo.UserInfo;
@@ -33,5 +34,30 @@ public class AuthServiceImpl implements AuthService {
         }
         AuthenticatedUser principal = new AuthenticatedUser(user.getId(), user.getUsername(), user.getRealName(), String.valueOf(user.getRoleType()));
         return new LoginResponse("Bearer", jwtService.createToken(principal), jwtService.expirationSeconds(), UserInfo.from(principal));
+    }
+
+    @Override
+    public LoginResponse register(RegisterRequest request) {
+        // 校验角色类型：只允许 1-学员 2-讲师
+        if (request.roleType() != 1 && request.roleType() != 2) {
+            throw new BusinessException(ErrorCode.INVALID_ROLE_TYPE);
+        }
+        // 检查用户名是否已存在
+        Long count = userMapper.selectCount(Wrappers.<User>lambdaQuery().eq(User::getUsername, request.username()));
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.USERNAME_EXISTS);
+        }
+        // 创建用户
+        User user = new User();
+        user.setUsername(request.username());
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setRealName(request.realName());
+        user.setDeptId(request.deptId());
+        user.setRoleType(request.roleType());
+        user.setStatus(1);
+        userMapper.insert(user);
+        // 注册成功后自动登录
+        LoginRequest loginRequest = new LoginRequest(request.username(), request.password());
+        return login(loginRequest);
     }
 }
