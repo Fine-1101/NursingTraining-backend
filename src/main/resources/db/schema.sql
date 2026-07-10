@@ -70,3 +70,39 @@ CREATE TABLE IF NOT EXISTS article_stat_snapshot (
     monthly_views BIGINT NOT NULL DEFAULT 0 COMMENT '当月累计浏览量',
     PRIMARY KEY (stat_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章管理统计快照';
+
+CREATE TABLE IF NOT EXISTS article_stat_snapshot (
+                                                     stat_date DATE NOT NULL COMMENT '统计日期',
+                                                     total_articles BIGINT NOT NULL DEFAULT 0 COMMENT '文章总数',
+                                                     published_articles BIGINT NOT NULL DEFAULT 0 COMMENT '已发布文章数',
+                                                     draft_articles BIGINT NOT NULL DEFAULT 0 COMMENT '草稿文章数',
+                                                     monthly_views BIGINT NOT NULL DEFAULT 0 COMMENT '当月累计浏览量',
+                                                     PRIMARY KEY (stat_date)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章管理统计快照';
+
+CREATE TABLE IF NOT EXISTS video (
+                                     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '视频ID',
+                                     title VARCHAR(200) NOT NULL COMMENT '视频标题',
+    description VARCHAR(500) DEFAULT NULL COMMENT '视频描述',
+    cover_url VARCHAR(500) DEFAULT NULL COMMENT '封面图URL',
+    video_url VARCHAR(500) NOT NULL COMMENT 'OSS MP4 对象地址',
+    original_name VARCHAR(255) DEFAULT NULL COMMENT '原始上传文件名',
+    duration INT DEFAULT NULL COMMENT '视频时长（秒），前端读取元数据后提交',
+    file_size BIGINT DEFAULT NULL COMMENT 'MP4 文件大小（字节）',
+    allow_drag TINYINT NOT NULL DEFAULT 1 COMMENT '是否允许拖拽进度条：0-否 1-是',
+    allow_speed TINYINT NOT NULL DEFAULT 1 COMMENT '是否允许倍速播放：0-否 1-是',
+    allow_cache TINYINT NOT NULL DEFAULT 0 COMMENT '是否允许缓存：0-否 1-是',
+    view_count INT NOT NULL DEFAULT 0 COMMENT '播放次数',
+    watch_count INT NOT NULL DEFAULT 0 COMMENT '完成观看人数',
+    status TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0-草稿 1-已发布 2-已下架',
+    published_at DATETIME DEFAULT NULL COMMENT '最近一次发布时间',
+    created_by BIGINT NOT NULL COMMENT '创建人ID',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted_at DATETIME DEFAULT NULL COMMENT '软删除时间',
+    PRIMARY KEY (id),
+    KEY idx_video_status (status),
+    KEY idx_video_created_at (created_at),
+    KEY idx_video_published_at (published_at),
+    KEY idx_video_created_by (created_by)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='培训视频表';

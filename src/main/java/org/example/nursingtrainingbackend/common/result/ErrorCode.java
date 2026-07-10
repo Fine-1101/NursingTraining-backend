@@ -42,10 +42,6 @@ public enum ErrorCode {
     TAG_HAS_COURSES(3103, "标签已关联课程，不能删除", HttpStatus.CONFLICT),
     TAG_BATCH_OPERATION_FAILED(3104, "批量操作失败，操作已全部回滚", HttpStatus.INTERNAL_SERVER_ERROR),
 
-
-
-
-
     // ==================== 课程管理模块 (50xx) ====================
     COURSE_NOT_FOUND(5001, "课程不存在", HttpStatus.NOT_FOUND),
     COURSE_BASIC_INFO_INCOMPLETE(5002, "课程基础信息不完整", HttpStatus.BAD_REQUEST),
@@ -76,19 +72,14 @@ public enum ErrorCode {
 
     // ==================== 视频管理模块 (40xx) ====================
     VIDEO_NOT_FOUND(4001, "视频不存在", HttpStatus.NOT_FOUND),
-    VIDEO_FILE_TYPE_NOT_SUPPORTED(4002, "视频文件类型不支持", HttpStatus.BAD_REQUEST),
-    VIDEO_FILE_SIZE_EXCEEDED(4003, "视频文件大小超过限制", HttpStatus.BAD_REQUEST),
-    VIDEO_VOD_CREDENTIAL_FAILED(4004, "获取VOD上传凭证失败", HttpStatus.INTERNAL_SERVER_ERROR),
-    VIDEO_CREDENTIAL_EXPIRED(4005, "上传凭证已过期，请刷新凭证", HttpStatus.BAD_REQUEST),
-    VIDEO_NOT_UPLOADED(4006, "视频尚未上传完成", HttpStatus.BAD_REQUEST),
-    VIDEO_TRANSCODE_NOT_SUCCESS(4007, "视频转码未成功，不能发布", HttpStatus.BAD_REQUEST),
-    VIDEO_TRANSCODE_RETRY_INVALID(4008, "当前转码状态不允许重试", HttpStatus.BAD_REQUEST),
-    VIDEO_PLAY_AUTH_FAILED(4009, "获取播放凭证失败", HttpStatus.INTERNAL_SERVER_ERROR),
-    VIDEO_VOD_DELETE_FAILED(4010, "删除阿里云VOD媒资失败", HttpStatus.INTERNAL_SERVER_ERROR),
-    VIDEO_CALLBACK_SIGNATURE_INVALID(4011, "VOD回调签名无效", HttpStatus.BAD_REQUEST),
-    VIDEO_STATUS_NO_CHANGE(4012, "视频业务状态无需重复修改", HttpStatus.BAD_REQUEST),
-    VIDEO_BATCH_DELETE_FAILED(4013, "批量删除失败，操作已全部回滚", HttpStatus.INTERNAL_SERVER_ERROR),
-    VIDEO_TRANSCODE_SUBMIT_FAILED(4014, "提交转码任务失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    VIDEO_MP4_ONLY(4002, "仅支持 MP4 视频", HttpStatus.BAD_REQUEST),
+    VIDEO_FILE_SIZE_EXCEEDED(4003, "视频文件超过大小限制", HttpStatus.BAD_REQUEST),
+    VIDEO_OSS_INVALID(4004, "OSS 视频地址、对象路径或文件信息不合法", HttpStatus.BAD_REQUEST),
+    VIDEO_STATUS_CONFLICT(4005, "当前视频状态不允许该操作", HttpStatus.CONFLICT),
+    VIDEO_OSS_UPLOAD_FAILED(4006, "OSS 上传凭证或播放地址生成失败", HttpStatus.BAD_GATEWAY),
+    VIDEO_IN_USE(4007, "视频已被课程点使用，不能删除", HttpStatus.CONFLICT),
+    VIDEO_BATCH_DELETE_FAILED(4008, "批量删除失败，操作未全部完成", HttpStatus.CONFLICT),
+    VIDEO_OSS_OBJECT_NOT_FOUND(4009, "OSS 视频对象不存在", HttpStatus.NOT_FOUND),
 
     // ==================== PPT 管理模块 (42xx) ====================
 
