@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
@@ -21,6 +20,7 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptListItem;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptOverviewVO;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,13 +35,27 @@ import java.util.Set;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PptServiceImpl implements PptService {
 
     private final PptMapper pptMapper;
     private final UserMapper userMapper;
-    private final OSS ossClient;
-    private final OssProperties ossProperties;
+    private OSS ossClient;
+    private OssProperties ossProperties;
+
+    public PptServiceImpl(PptMapper pptMapper, UserMapper userMapper) {
+        this.pptMapper = pptMapper;
+        this.userMapper = userMapper;
+    }
+
+    @Autowired(required = false)
+    public void setOssClient(OSS ossClient) {
+        this.ossClient = ossClient;
+    }
+
+    @Autowired(required = false)
+    public void setOssProperties(OssProperties ossProperties) {
+        this.ossProperties = ossProperties;
+    }
 
     private static final Set<String> VALID_TRANSITIONS = new HashSet<>(Arrays.asList(
             "DRAFT->PUBLISHED", "DRAFT->OFFLINE",
@@ -159,13 +173,15 @@ public class PptServiceImpl implements PptService {
 
     @Override
     public String getDownloadUrl(Long id, Integer expiresIn) {
+        if (ossClient == null || ossProperties == null) {
+            throw new BusinessException(ErrorCode.OSS_NOT_CONFIGURED);
+        }
         Ppt ppt = getPptById(id);
         String key = extractKeyFromUrl(ppt.getOriginalUrl());
 
         if (expiresIn == null || expiresIn < 60) expiresIn = 600;
         if (expiresIn > 3600) expiresIn = 3600;
 
-        // ✅ 添加 import java.util.Date
         Date expiration = new Date(System.currentTimeMillis() + expiresIn * 1000L);
         GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(
                 ossProperties.getBucketName(), key);
@@ -301,6 +317,10 @@ public class PptServiceImpl implements PptService {
 
     @Async
     public void asyncDeleteOssFile(String url) {
+        if (ossClient == null || ossProperties == null) {
+            log.warn("OSS 未配置，跳过文件删除: {}", url);
+            return;
+        }
         try {
             String key = extractKeyFromUrl(url);
             ossClient.deleteObject(ossProperties.getBucketName(), key);

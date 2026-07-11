@@ -13,6 +13,8 @@ import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.file.vo.FileUploadResponse;
 import org.example.nursingtrainingbackend.modules.file.vo.UploadPolicyResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Conditional;
+import org.example.nursingtrainingbackend.config.condition.OssEnabledCondition;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +25,7 @@ import java.util.Base64;
 import java.util.Date;
 
 @Service
+@Conditional(OssEnabledCondition.class)
 @RequiredArgsConstructor
 public class OssFileServiceImpl implements FileService {
 

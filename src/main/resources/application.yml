@@ -1,4 +1,7 @@
 spring:
+  devtools:
+    restart:
+      enabled: false
   application:
     name: nursing-training-backend
   datasource:
@@ -16,6 +19,13 @@ spring:
   sql:
     init:
       mode: never
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}
+      timeout: 3s
 
 mybatis-plus:
   configuration:
@@ -31,27 +41,17 @@ app:
     secret: ${JWT_SECRET:nursing-training-secret-key-for-jwt-token-generation-2026}
     expiration: ${JWT_EXPIRATION:2h}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5174}
   upload:
     max-size: ${APP_UPLOAD_MAX_BYTES:104857600}
     allowed-content-types: ${APP_UPLOAD_TYPES:image/jpeg,image/png,image/gif,application/pdf,video/mp4,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation}
+    local-directory: ${APP_UPLOAD_LOCAL_DIR:./uploads}
+    local-base-url: ${APP_UPLOAD_LOCAL_BASE_URL:/uploads}
   vod:
     access-key-id: ${ALIYUN_ACCESS_KEY_ID:}
     access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
     region-id: ${VOD_REGION_ID:cn-shanghai}
     transcode-template-group-id: ${VOD_TRANSCODE_TEMPLATE_GROUP_ID:}
-
-
-
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      database: ${REDIS_DB:0}
-      timeout: 3s
-
-
   oss:
     endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
     access-key-id: ${ALIYUN_ACCESS_KEY_ID:}
