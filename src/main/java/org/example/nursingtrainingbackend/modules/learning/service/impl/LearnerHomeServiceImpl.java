@@ -473,7 +473,8 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         
         // 获取课程类型
         LambdaQueryWrapper<CourseDepartment> cdWrapper = new LambdaQueryWrapper<>();
-        cdWrapper.eq(CourseDepartment::getCourseId, progress.getCourseId());
+        cdWrapper.eq(CourseDepartment::getCourseId, progress.getCourseId())
+                 .last("LIMIT 1");
         CourseDepartment cd = courseDepartmentMapper.selectOne(cdWrapper);
         vo.setCourseType(cd != null && cd.getRequired() == 1 ? "REQUIRED" : "OPTIONAL");
         
