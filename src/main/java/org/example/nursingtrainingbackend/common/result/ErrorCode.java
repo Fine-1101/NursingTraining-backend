@@ -61,6 +61,8 @@ public enum ErrorCode {
     COURSE_STATUS_INVALID(5014, "当前课程状态不允许该操作", HttpStatus.CONFLICT),
     COURSE_COVER_URL_INVALID(5015, "课程封面 OSS 地址不合法", HttpStatus.BAD_REQUEST),
     COURSE_NOT_DRAFT(5016, "课程已发布，不能按草稿规则删除", HttpStatus.CONFLICT),
+    COURSE_EXPORT_CONDITION_INVALID(5017, "导出条件不合法", HttpStatus.BAD_REQUEST),
+    COURSE_EXCEL_GENERATE_FAILED(5018, "课程 Excel 生成失败", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // ==================== 文章管理模块 (41xx) ====================
     ARTICLE_NOT_FOUND(4101, "文章不存在", HttpStatus.NOT_FOUND),

@@ -25,11 +25,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader(SecurityConstants.AUTHORIZATION_HEADER);
         if (header != null && header.startsWith(SecurityConstants.TOKEN_PREFIX)
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
+            String token = header.substring(SecurityConstants.TOKEN_PREFIX.length());
             try {
-                AuthenticatedUser user = jwtService.parseToken(header.substring(SecurityConstants.TOKEN_PREFIX.length()));
-                var authentication = new UsernamePasswordAuthenticationToken(user, null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + user.role())));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                AuthenticatedUser user = jwtService.parseToken(token);
+                // 检查 Token 是否已被拉黑（Redis 不可用时跳过此检查）
+                if (!jwtService.isBlacklisted(token)) {
+                    var authentication = new UsernamePasswordAuthenticationToken(user, null,
+                            List.of(new SimpleGrantedAuthority("ROLE_" + user.role())));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             } catch (RuntimeException ignored) {
                 SecurityContextHolder.clearContext();
             }

@@ -237,7 +237,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         List<CourseDepartment> courseDepts = courseDepartmentMapper.selectList(cdWrapper);
         
         Map<Long, Integer> courseTypeMap = courseDepts.stream()
-                .collect(Collectors.toMap(CourseDepartment::getCourseId, CourseDepartment::getRequired));
+                .collect(Collectors.toMap(CourseDepartment::getCourseId, CourseDepartment::getRequired, (v1, v2) -> v1));
         
         long requiredCount = courseTypeMap.values().stream().filter(v -> v == 1).count();
         long optionalCount = courseTypeMap.values().stream().filter(v -> v == 0).count();
@@ -251,7 +251,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         List<UserCourseProgress> progresses = userCourseProgressMapper.selectList(progressWrapper);
         
         Map<Long, Integer> statusMap = progresses.stream()
-                .collect(Collectors.toMap(UserCourseProgress::getCourseId, UserCourseProgress::getStatus));
+                .collect(Collectors.toMap(UserCourseProgress::getCourseId, UserCourseProgress::getStatus, (v1, v2) -> v1));
         
         long completedCount = statusMap.values().stream().filter(s -> s == 2).count();
         long learningCount = statusMap.values().stream().filter(s -> s == 1).count();
@@ -279,7 +279,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         List<UserCourseProgress> progresses = userCourseProgressMapper.selectList(progressWrapper);
         
         Map<Long, UserCourseProgress> progressMap = progresses.stream()
-                .collect(Collectors.toMap(UserCourseProgress::getCourseId, p -> p));
+                .collect(Collectors.toMap(UserCourseProgress::getCourseId, p -> p, (p1, p2) -> p1));
         
         // 获取课程部门关系（判断必修/选修）
         LambdaQueryWrapper<CourseDepartment> cdWrapper = new LambdaQueryWrapper<>();
@@ -287,7 +287,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         List<CourseDepartment> courseDepts = courseDepartmentMapper.selectList(cdWrapper);
         
         Map<Long, Integer> courseTypeMap = courseDepts.stream()
-                .collect(Collectors.toMap(CourseDepartment::getCourseId, CourseDepartment::getRequired));
+                .collect(Collectors.toMap(CourseDepartment::getCourseId, CourseDepartment::getRequired, (v1, v2) -> v1));
         
         // 获取课程信息用于排序
         LambdaQueryWrapper<Course> courseWrapper = new LambdaQueryWrapper<>();
@@ -381,14 +381,14 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         LambdaQueryWrapper<CourseDepartment> cdWrapper = new LambdaQueryWrapper<>();
         cdWrapper.in(CourseDepartment::getCourseId, courseIds);
         Map<Long, Integer> courseTypeMap = courseDepartmentMapper.selectList(cdWrapper).stream()
-                .collect(Collectors.toMap(CourseDepartment::getCourseId, CourseDepartment::getRequired));
+                .collect(Collectors.toMap(CourseDepartment::getCourseId, CourseDepartment::getRequired, (v1, v2) -> v1));
         
         // 批量获取进度
         LambdaQueryWrapper<UserCourseProgress> progressWrapper = new LambdaQueryWrapper<>();
         progressWrapper.eq(UserCourseProgress::getUserId, userId)
                        .in(UserCourseProgress::getCourseId, courseIds);
         Map<Long, UserCourseProgress> progressMap = userCourseProgressMapper.selectList(progressWrapper).stream()
-                .collect(Collectors.toMap(UserCourseProgress::getCourseId, p -> p));
+                .collect(Collectors.toMap(UserCourseProgress::getCourseId, p -> p, (p1, p2) -> p1));
         
         // 构建VO
         return courseIds.stream()
@@ -541,7 +541,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         List<UserCourseProgress> progresses = userCourseProgressMapper.selectList(wrapper);
         
         Map<Long, Integer> statusMap = progresses.stream()
-                .collect(Collectors.toMap(UserCourseProgress::getCourseId, UserCourseProgress::getStatus));
+                .collect(Collectors.toMap(UserCourseProgress::getCourseId, UserCourseProgress::getStatus, (v1, v2) -> v1));
         
         int completedCount = (int) statusMap.values().stream().filter(s -> s == 2).count();
         int learningCount = (int) statusMap.values().stream().filter(s -> s == 1).count();

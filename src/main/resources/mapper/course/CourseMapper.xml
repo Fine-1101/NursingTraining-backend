@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.nursingtrainingbackend.modules.course.mapper.CourseMapper">
+
+    <select id="selectCoursePage"
+            resultType="org.example.nursingtrainingbackend.modules.course.vo.CourseItemVO">
+        SELECT
+            c.id,
+            c.cover_url AS coverUrl,
+            c.title,
+            c.category_id AS categoryId,
+            cat.name AS categoryName,
+            c.instructor_id AS instructorId,
+            u.real_name AS instructorName,
+            (
+                SELECT COUNT(DISTINCT usr.id)
+                FROM user usr
+                WHERE usr.role_type = 1
+                  AND usr.status = 1
+                  AND usr.deleted_at IS NULL
+                  AND (
+                      (c.scope_type = 1)
+                      OR
+                      (c.scope_type = 2 AND usr.dept_id IN (
+                          SELECT cd.department_id
+                          FROM course_department cd
+                          WHERE cd.course_id = c.id
+                      ))
+                  )
+            ) AS studentCount,
+            CASE c.status
+                WHEN 0 THEN 'DRAFT'
+                WHEN 1 THEN 'PUBLISHED'
+                WHEN 2 THEN 'OFFLINE'
+            END AS status,
+            c.updated_at AS updatedAt
+        FROM course c
+        LEFT JOIN category cat ON cat.id = c.category_id AND cat.deleted_at IS NULL
+        LEFT JOIN user u ON u.id = c.instructor_id AND u.deleted_at IS NULL
+        LEFT JOIN user u_kw ON u_kw.id = c.instructor_id
+        WHERE c.deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (c.title LIKE CONCAT('%', #{keyword}, '%')
+                 OR u_kw.real_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="categoryId != null">
+            AND c.category_id = #{categoryId}
+        </if>
+        <if test="status != null">
+            AND c.status = #{status}
+        </if>
+        ORDER BY c.updated_at DESC
+    </select>
+
+    <select id="selectCourseExport"
+            resultType="org.example.nursingtrainingbackend.modules.course.vo.CourseExportRowVO">
+        SELECT
+            c.title,
+            cat.name AS categoryName,
+            u.real_name AS instructorName,
+            (
+                SELECT COUNT(DISTINCT usr.id)
+                FROM user usr
+                WHERE usr.role_type = 1
+                  AND usr.status = 1
+                  AND usr.deleted_at IS NULL
+                  AND (
+                      (c.scope_type = 1)
+                      OR
+                      (c.scope_type = 2 AND usr.dept_id IN (
+                          SELECT cd.department_id
+                          FROM course_department cd
+                          WHERE cd.course_id = c.id
+                      ))
+                  )
+            ) AS studentCount,
+            CASE c.status
+                WHEN 0 THEN '草稿'
+                WHEN 1 THEN '已发布'
+                WHEN 2 THEN '已下架'
+            END AS status,
+            DATE_FORMAT(c.updated_at, '%Y-%m-%d %H:%i:%s') AS updatedAt
+        FROM course c
+        LEFT JOIN category cat ON cat.id = c.category_id AND cat.deleted_at IS NULL
+        LEFT JOIN user u ON u.id = c.instructor_id AND u.deleted_at IS NULL
+        LEFT JOIN user u_kw ON u_kw.id = c.instructor_id
+        WHERE c.deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (c.title LIKE CONCAT('%', #{keyword}, '%')
+                 OR u_kw.real_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="categoryId != null">
+            AND c.category_id = #{categoryId}
+        </if>
+        <if test="status != null">
+            AND c.status = #{status}
+        </if>
+        ORDER BY c.updated_at DESC
+    </select>
+
+</mapper>

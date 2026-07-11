@@ -292,7 +292,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
             ppWrapper.eq(UserCoursePointProgress::getUserId, userId)
                      .in(UserCoursePointProgress::getCoursePointId, pointIds);
             pointProgressMap = userCoursePointProgressMapper.selectList(ppWrapper).stream()
-                    .collect(Collectors.toMap(UserCoursePointProgress::getCoursePointId, p -> p));
+                    .collect(Collectors.toMap(UserCoursePointProgress::getCoursePointId, p -> p, (p1, p2) -> p1));
         }
 
         // 8. 批量查询课件关联和课件进度
@@ -427,7 +427,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         LambdaQueryWrapper<CourseDepartment> wrapper = new LambdaQueryWrapper<>();
         wrapper.in(CourseDepartment::getCourseId, courseIds);
         return courseDepartmentMapper.selectList(wrapper).stream()
-                .collect(Collectors.toMap(CourseDepartment::getCourseId, CourseDepartment::getRequired));
+                .collect(Collectors.toMap(CourseDepartment::getCourseId, CourseDepartment::getRequired, (v1, v2) -> v1));
     }
 
     private Map<Long, UserCourseProgress> loadProgressMap(List<Long> courseIds, Long userId) {
@@ -435,7 +435,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         wrapper.eq(UserCourseProgress::getUserId, userId)
                .in(UserCourseProgress::getCourseId, courseIds);
         return userCourseProgressMapper.selectList(wrapper).stream()
-                .collect(Collectors.toMap(UserCourseProgress::getCourseId, p -> p));
+                .collect(Collectors.toMap(UserCourseProgress::getCourseId, p -> p, (p1, p2) -> p1));
     }
 
     private Map<Long, Integer> loadPointCountMap(List<Long> courseIds) {

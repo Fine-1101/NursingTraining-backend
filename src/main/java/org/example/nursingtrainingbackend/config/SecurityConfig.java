@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/admin/login", "/error", "/static/**")
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/logout", "/api/admin/login", "/error", "/static/**")
                         .permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();
@@ -50,7 +50,7 @@ public class SecurityConfig {
         config.setAllowedOrigins(corsProperties.allowedOrigins());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        config.setExposedHeaders(List.of("Location"));
+        config.setExposedHeaders(List.of("Location", "Content-Disposition"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -127,4 +127,6 @@ public class CourseCreateController {
                                                       @Validated @RequestBody CourseStatusDTO courseStatusDTO) {
         return Result.success(courseUpdateService.updateCourseStatus(courseId, courseStatusDTO));
     }
+
+
 }

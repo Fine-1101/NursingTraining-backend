@@ -33,6 +33,8 @@ public class Course {
 
     private Long createdBy;
 
+    private Long instructorId;
+
     private LocalDateTime publishedAt;
 
     private LocalDateTime createdAt;
