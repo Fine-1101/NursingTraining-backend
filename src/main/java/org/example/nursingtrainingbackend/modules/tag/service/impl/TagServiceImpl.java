@@ -7,8 +7,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
-
-import org.example.nursingtrainingbackend.modules.course.mapper.CourseTagMapper;
 import tools.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +22,7 @@ import org.example.nursingtrainingbackend.modules.tag.dto.TagStatusDTO;
 import org.example.nursingtrainingbackend.modules.tag.dto.TagUpdateDTO;
 import org.example.nursingtrainingbackend.modules.tag.entity.CourseTag;
 import org.example.nursingtrainingbackend.modules.tag.entity.Tag;
-//import org.example.nursingtrainingbackend.modules.tag.mapper.CourseTagMapper;
+import org.example.nursingtrainingbackend.modules.tag.mapper.CourseTagMapper;
 import org.example.nursingtrainingbackend.modules.tag.mapper.TagMapper;
 import org.example.nursingtrainingbackend.modules.tag.mapper.TagStatisticsRow;
 import org.example.nursingtrainingbackend.modules.tag.mapper.TagWithCount;
@@ -144,7 +142,8 @@ public class TagServiceImpl implements TagService {
         if (existing == null) {
             throw new BusinessException(ErrorCode.TAG_NOT_FOUND);
         }
-        Long relatedCourses = courseTagMapper.selectCount(Wrappers.<CourseTag>lambdaQuery());
+        Long relatedCourses = courseTagMapper.selectCount(Wrappers.<CourseTag>lambdaQuery()
+                .eq(CourseTag::getTagId, id));
         if (relatedCourses != null && relatedCourses > 0) {
             throw new BusinessException(ErrorCode.TAG_HAS_COURSES);
         }
