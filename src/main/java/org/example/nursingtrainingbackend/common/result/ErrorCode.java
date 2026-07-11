@@ -89,7 +89,16 @@ public enum ErrorCode {
     PPT_STATUS_INVALID(4202, "当前状态不允许该操作", HttpStatus.BAD_REQUEST),
     PPT_HAS_COURSE(4203, "PPT 已关联课程，不能删除", HttpStatus.CONFLICT),
     OSS_INVALID_URL(4204, "OSS 文件地址不合法", HttpStatus.BAD_REQUEST),
-    OSS_FILE_NOT_FOUND(4205, "原始文件不存在", HttpStatus.NOT_FOUND);
+    OSS_FILE_NOT_FOUND(4205, "原始文件不存在", HttpStatus.NOT_FOUND),
+
+    // ==================== 学员端模块 (6xxx) ====================
+    LEARNER_NOT_FOUND(6001, "当前学员不存在或已停用", HttpStatus.NOT_FOUND),
+    LEARNER_DEPT_NOT_BINDIED(6002, "当前学员未绑定部门，无法计算可学习课程", HttpStatus.BAD_REQUEST),
+    LEARNER_HOME_QUERY_FAILED(6003, "首页数据查询失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    LEARNER_PAGE_PARAM_INVALID(6004, "分页参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_COURSE_NOT_VISIBLE(6005, "课程不存在或无权学习", HttpStatus.NOT_FOUND),
+    LEARNER_COURSE_NOT_PUBLISHED(6006, "课程未发布或已下架", HttpStatus.BAD_REQUEST),
+    LEARNER_POINT_NOT_FOUND(6007, "课程点不存在或已停用", HttpStatus.NOT_FOUND);
 
     private final int code;
     private final String message;
