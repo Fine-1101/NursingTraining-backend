@@ -575,102 +575,102 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
      */
     private List<LearningRecordVO> deriveLearningRecords(Long userId) {
         List<LearningRecordVO> records = new ArrayList<>();
-        
+
         // 1. 从user_course_progress派生课程级记录
         LambdaQueryWrapper<UserCourseProgress> courseWrapper = new LambdaQueryWrapper<>();
         courseWrapper.eq(UserCourseProgress::getUserId, userId);
         List<UserCourseProgress> courseProgresses = userCourseProgressMapper.selectList(courseWrapper);
-        
+
         for (UserCourseProgress progress : courseProgresses) {
             LearningRecordVO record = new LearningRecordVO();
             record.setCourseId(progress.getCourseId());
-            
+
             Course course = courseMapper.selectById(progress.getCourseId());
             record.setCourseTitle(course != null ? course.getTitle() : "未知课程");
-            
+
             if (progress.getStatus() == 2) {
-                // 已完成
-                record.setRecordType("COURSE_COMPLETED");
+                record.setActionType("COMPLETE_COURSE");
+                record.setActionName("已完成");
                 record.setTitle("完成了《" + record.getCourseTitle() + "》");
                 record.setOccurredAt(progress.getCompletedAt() != null ? progress.getCompletedAt() : progress.getUpdatedAt());
             } else if (progress.getStatus() == 1) {
-                // 学习中
-                record.setRecordType("COURSE_LEARNING");
+                record.setActionType("CONTINUE_LEARNING");
+                record.setActionName("学习中");
                 record.setTitle("继续学习了《" + record.getCourseTitle() + "》");
                 record.setOccurredAt(progress.getUpdatedAt());
             } else {
-                continue; // 未开始的不显示
+                continue;
             }
-            
+
             record.setCoursePointId(progress.getLastPointId());
+            record.setTimeText(formatTimeTextForHome(record.getOccurredAt()));
             records.add(record);
         }
-        
+
         // 2. 从user_course_point_progress派生课程点级记录
         LambdaQueryWrapper<UserCoursePointProgress> pointWrapper = new LambdaQueryWrapper<>();
         pointWrapper.eq(UserCoursePointProgress::getUserId, userId);
         List<UserCoursePointProgress> pointProgresses = userCoursePointProgressMapper.selectList(pointWrapper);
-        
+
         for (UserCoursePointProgress progress : pointProgresses) {
             if (progress.getStatus() == 2) {
-                // 只记录完成的课程点
                 LearningRecordVO record = new LearningRecordVO();
-                record.setRecordType("POINT_COMPLETED");
+                record.setActionType("COMPLETE_POINT");
+                record.setActionName("已完成");
                 record.setCourseId(progress.getCourseId());
-                
+
                 Course course = courseMapper.selectById(progress.getCourseId());
                 record.setCourseTitle(course != null ? course.getTitle() : "未知课程");
-                
+
                 record.setCoursePointId(progress.getCoursePointId());
                 CoursePoint point = coursePointMapper.selectById(progress.getCoursePointId());
                 record.setCoursePointTitle(point != null ? point.getTitle() : "未知课程点");
-                
+
                 record.setTitle("完成了课程点《" + record.getCoursePointTitle() + "》");
                 record.setOccurredAt(progress.getCompletedAt() != null ? progress.getCompletedAt() : progress.getUpdatedAt());
-                
+                record.setTimeText(formatTimeTextForHome(record.getOccurredAt()));
+
                 records.add(record);
             }
         }
-        
+
         // 3. 从user_course_resource_progress派生课件级记录
         LambdaQueryWrapper<UserCourseResourceProgress> resourceWrapper = new LambdaQueryWrapper<>();
         resourceWrapper.eq(UserCourseResourceProgress::getUserId, userId);
         List<UserCourseResourceProgress> resourceProgresses = userCourseResourceProgressMapper.selectList(resourceWrapper);
-        
+
         for (UserCourseResourceProgress progress : resourceProgresses) {
             if (progress.getStatus() == 2) {
-                // 只记录完成的课件
                 LearningRecordVO record = new LearningRecordVO();
-                record.setRecordType("RESOURCE_COMPLETED");
+                record.setActionType("COMPLETE_RESOURCE");
+                record.setActionName("已完成");
                 record.setCourseId(progress.getCourseId());
-                
+
                 Course course = courseMapper.selectById(progress.getCourseId());
                 record.setCourseTitle(course != null ? course.getTitle() : "未知课程");
-                
+
                 record.setCoursePointId(progress.getCoursePointId());
                 CoursePoint point = coursePointMapper.selectById(progress.getCoursePointId());
                 record.setCoursePointTitle(point != null ? point.getTitle() : null);
-                
-                // 根据resourceType获取课件名称
+
                 String resourceTypeName = getResourceTypeName(progress.getResourceType());
+                String resourceTypeDisplayName = getResourceTypeDisplayName(progress.getResourceType());
                 record.setResourceType(resourceTypeName);
+                record.setResourceTypeName(resourceTypeDisplayName);
                 record.setResourceId(progress.getResourceId());
-                // TODO: 根据resourceType和resourceId获取课件标题
                 record.setResourceTitle(null);
-                
-                record.setTitle("完成了《" + record.getCourseTitle() + "》的" + resourceTypeName);
+
+                record.setTitle("完成了《" + record.getCourseTitle() + "》的" + resourceTypeDisplayName);
                 record.setOccurredAt(progress.getCompletedAt() != null ? progress.getCompletedAt() : progress.getUpdatedAt());
-                
+                record.setTimeText(formatTimeTextForHome(record.getOccurredAt()));
+
                 records.add(record);
             }
         }
-        
+
         return records;
     }
 
-    /**
-     * 获取资源类型名称
-     */
     private String getResourceTypeName(Integer resourceType) {
         if (resourceType == null) return null;
         return switch (resourceType) {
@@ -679,6 +679,21 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
             case 3 -> "PPT";
             default -> null;
         };
+    }
+
+    private String getResourceTypeDisplayName(Integer resourceType) {
+        if (resourceType == null) return null;
+        return switch (resourceType) {
+            case 1 -> "文章";
+            case 2 -> "视频";
+            case 3 -> "PPT";
+            default -> null;
+        };
+    }
+
+    private String formatTimeTextForHome(LocalDateTime dateTime) {
+        if (dateTime == null) return null;
+        return String.format("%02d:%02d", dateTime.getHour(), dateTime.getMinute());
     }
 
     /**

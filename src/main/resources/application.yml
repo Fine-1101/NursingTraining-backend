@@ -48,3 +48,4 @@ app:
     region-id: ${VOD_REGION_ID:cn-shanghai}
     transcode-template-group-id: ${VOD_TRANSCODE_TEMPLATE_GROUP_ID:}
 
+

@@ -3,13 +3,14 @@ package org.example.nursingtrainingbackend.common.result;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+//test
 @Getter
 public enum ErrorCode {
     // ==================== 通用错误码 ====================
     SUCCESS(0, "success", HttpStatus.OK),
     BAD_REQUEST(400, "请求参数错误", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED(401, "未登录或登录已过期", HttpStatus.UNAUTHORIZED),
-    FORBIDDEN(403, "无权访问", HttpStatus.FORBIDDEN),
+    FORBIDDEN(403, "当前用户不是学员或无访问权限", HttpStatus.FORBIDDEN),
     NOT_FOUND(404, "资源不存在", HttpStatus.NOT_FOUND),
     INTERNAL_ERROR(500, "服务器内部错误", HttpStatus.INTERNAL_SERVER_ERROR),
 
@@ -100,7 +101,23 @@ public enum ErrorCode {
     LEARNER_PAGE_PARAM_INVALID(6004, "分页参数不合法", HttpStatus.BAD_REQUEST),
     LEARNER_COURSE_NOT_VISIBLE(6005, "课程不存在或无权学习", HttpStatus.NOT_FOUND),
     LEARNER_COURSE_NOT_PUBLISHED(6006, "课程未发布或已下架", HttpStatus.BAD_REQUEST),
-    LEARNER_POINT_NOT_FOUND(6007, "课程点不存在或已停用", HttpStatus.NOT_FOUND);
+    LEARNER_POINT_NOT_FOUND(6007, "课程点不存在或已停用", HttpStatus.NOT_FOUND),
+
+    // ==================== 学习记录模块 (61xx) ====================
+    LEARNER_RECORD_INVALID_ID(6101, "学习记录ID格式不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_NOT_FOUND(6102, "学习记录不存在", HttpStatus.NOT_FOUND),
+    LEARNER_RECORD_ALREADY_COMPLETED(6103, "该课件已标记为完成", HttpStatus.CONFLICT),
+    LEARNER_RECORD_TYPE_NOT_SUPPORTED(6104, "该记录类型不支持此操作", HttpStatus.BAD_REQUEST),
+
+    // ==================== 学习记录参数校验模块 (64xx) ====================
+    LEARNER_RECORD_RANGE_INVALID(6401, "时间范围参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_TYPE_PARAM_INVALID(6402, "行为类型参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_RESOURCE_TYPE_INVALID(6403, "课件类型参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_PAGE_PARAM_INVALID(6404, "分页参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_QUERY_FAILED(6405, "学习记录查询失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    LEARNER_RECORD_STATS_FAILED(6406, "学习记录统计失败", HttpStatus.INTERNAL_SERVER_ERROR);
+
+
 
     private final int code;
     private final String message;
