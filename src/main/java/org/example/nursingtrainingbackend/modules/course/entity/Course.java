@@ -21,7 +21,7 @@ public class Course {
 
     private String coverUrl;
 
-    //private String learningObjective;
+    private String learningObjective;
 
     private Integer scopeType;
 

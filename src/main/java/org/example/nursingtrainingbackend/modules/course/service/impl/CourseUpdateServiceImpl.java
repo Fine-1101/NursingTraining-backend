@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,11 +76,12 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
         // 更新课程主表
         course.setTitle(dto.getTitle().trim());
         course.setSummary(dto.getSummary().trim());
-        //course.setLearningObjective(dto.getLearningObjective().trim());
+        course.setLearningObjective(dto.getLearningObjective().trim());
         course.setCategoryId(dto.getCategoryId());
         course.setCoverUrl(dto.getCoverUrl());
+        course.setInstructorId(dto.getInstructorId());
         if (dto.getStartAt() != null && !dto.getStartAt().isBlank()) {
-            course.setStartAt(LocalDateTime.parse(dto.getStartAt()));
+            course.setStartAt(OffsetDateTime.parse(dto.getStartAt()).toLocalDateTime());
         } else {
             course.setStartAt(null);
         }

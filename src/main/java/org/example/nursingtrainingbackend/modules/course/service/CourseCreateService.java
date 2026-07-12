@@ -27,6 +27,8 @@ public interface CourseCreateService {
 
     void deletePoint(Long courseId, Long chapterId, Long pointId);
 
+    void deleteChapter(Long courseId, Long chapterId);
+
     CourseDetailVO getCourseDetail(Long courseId);
 
     UpdateChapterOrderVO updateChapterOrder(Long courseId, UpdateChapterOrder updateChapterOrder);
