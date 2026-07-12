@@ -26,6 +26,14 @@ import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.example.nursingtrainingbackend.modules.learning.entity.UserCourseResourceProgress;
+import org.example.nursingtrainingbackend.modules.learning.entity.UserLearningRecord;
+import org.example.nursingtrainingbackend.modules.learning.mapper.UserCoursePointProgressMapper;
+import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseProgressMapper;
+import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseResourceProgressMapper;
+import org.example.nursingtrainingbackend.modules.learning.mapper.UserLearningRecordMapper;
+import org.example.nursingtrainingbackend.modules.learning.service.LearnerStudy;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -51,6 +59,7 @@ public class LearnerStudyImpl implements LearnerStudy {
     private final UserCourseProgressMapper userCourseProgressMapper;
     private final UserCoursePointProgressMapper userCoursePointProgressMapper;
     private final UserCourseResourceProgressMapper userCourseResourceProgressMapper;
+    private final UserLearningRecordMapper userLearningRecordMapper;
 
     @Override
     @Transactional
@@ -75,8 +84,11 @@ public class LearnerStudyImpl implements LearnerStudy {
         // 4. 更新/创建课程点进度 → LEARNING
         UserCoursePointProgress pointProgress = getOrCreatePointProgress(userId, courseId, pointId, now);
 
-        // 5. 更新课程进度 → LEARNING，写入 last_point_id
+        // 5. 更新课程进度为 LEARNING，写入 last_point_id
         updateCourseProgressToLearning(userId, courseId, pointId, now);
+
+        // 5.1 写入进入学习页记录（action_type=1/2/6，5分钟防重复）
+        writeEnterStudyRecord(userId, courseId, pointId, now);
 
         // 6. 构建课程概要
         CourseStudyVO.CourseSummaryVO courseVO = buildCourseSummary(course, userId);
@@ -98,6 +110,82 @@ public class LearnerStudyImpl implements LearnerStudy {
         vo.setTabs(tabsVO);
         vo.setNavigation(navigationVO);
         return vo;
+    }
+
+    /**
+     * 写入进入课程学习页记录
+     * - 首次进入：action_type=1
+     * - 已开始未完成再次进入：action_type=2，5分钟防重复
+     * - 已完成再次进入：action_type=6，5分钟防重复
+     */
+    private void writeEnterStudyRecord(Long userId, Long courseId, Long pointId, LocalDateTime now) {
+        try {
+            LambdaQueryWrapper<UserCourseProgress> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(UserCourseProgress::getUserId, userId)
+                    .eq(UserCourseProgress::getCourseId, courseId);
+            UserCourseProgress courseProgress = userCourseProgressMapper.selectOne(wrapper);
+
+            int actionType;
+            if (courseProgress != null && courseProgress.getStatus() != null && courseProgress.getStatus() == 2) {
+                actionType = 6;
+            } else if (courseProgress != null && courseProgress.getStatus() != null && courseProgress.getStatus() >= 1) {
+                actionType = 2;
+            } else {
+                actionType = 1;
+            }
+
+            if (actionType != 1 && hasRecentRecord(userId, courseId, actionType, now)) {
+                return;
+            }
+
+            String title = buildEnterTitle(courseProgress, actionType);
+            insertLearningRecord(userId, courseId, pointId, actionType, null, null, title, now);
+        } catch (Exception e) {
+            log.error("写入进入学习页记录失败, userId={}, courseId={}", userId, courseId, e);
+        }
+    }
+
+    private String buildEnterTitle(UserCourseProgress courseProgress, int actionType) {
+        String actionName = switch (actionType) {
+            case 1 -> "开始学习";
+            case 2 -> "继续学习";
+            case 6 -> "复习";
+            default -> "进入学习";
+        };
+        if (courseProgress != null) {
+            Course course = courseMapper.selectById(courseProgress.getCourseId());
+            String courseTitle = course != null ? course.getTitle() : "未知课程";
+            return actionName + "《" + courseTitle + "》";
+        }
+        return actionName;
+    }
+
+    /**
+     * 5分钟内防重复：检查是否已有相同 action_type 的记录
+     */
+    private boolean hasRecentRecord(Long userId, Long courseId, int actionType, LocalDateTime now) {
+        LambdaQueryWrapper<UserLearningRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserLearningRecord::getUserId, userId)
+                .eq(UserLearningRecord::getCourseId, courseId)
+                .eq(UserLearningRecord::getActionType, actionType)
+                .ge(UserLearningRecord::getCreatedAt, now.minusMinutes(5));
+        Long count = userLearningRecordMapper.selectCount(wrapper);
+        return count != null && count > 0;
+    }
+
+    private void insertLearningRecord(Long userId, Long courseId, Long coursePointId,
+                                      int actionType, Integer resourceType, Long resourceId,
+                                      String title, LocalDateTime time) {
+        UserLearningRecord record = new UserLearningRecord();
+        record.setUserId(userId);
+        record.setCourseId(courseId);
+        record.setCoursePointId(coursePointId);
+        record.setActionType(actionType);
+        record.setResourceType(resourceType);
+        record.setResourceId(resourceId);
+        record.setTitle(title);
+        record.setCreatedAt(time);
+        userLearningRecordMapper.insert(record);
     }
 
     // ==================== 私有辅助方法 ====================
