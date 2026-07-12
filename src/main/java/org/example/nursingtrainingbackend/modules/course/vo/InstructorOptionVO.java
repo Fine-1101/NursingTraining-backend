@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class InstructorOptionVO {
     Long id;
-    String realname;
+    String realName;
     String username;
     String departmentName;
 }

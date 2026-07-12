@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -68,18 +69,25 @@ public class CourseCreateServiceImpl implements CourseCreateService {
 
     @Override
     public List<InstructorOptionVO> getInstructorOptions(String keyword, Integer limit) {
-        //选讲师应该要真实姓名
+        //选讲师应该要真实姓名，只查询 role_type=2 的讲师用户
         List<User> users = userMapper.selectList(
                 Wrappers.<User>lambdaQuery()
+                        .eq(User::getRoleType, 2)
                         .like(StringUtils.hasText(keyword), User::getRealName, keyword)
         );
 
         return users.stream().map(user -> {
             InstructorOptionVO vo = new InstructorOptionVO();
             vo.setId(user.getId());
-            vo.setRealname(user.getRealName());
+            vo.setRealName(user.getRealName());
             vo.setUsername(user.getUsername());
-            vo.setDepartmentName(user.getDeptId().toString());
+            // 查询真实部门名称
+            String deptName = "";
+            if (user.getDeptId() != null) {
+                Department dept = departmentMapper.selectById(user.getDeptId());
+                if (dept != null) deptName = dept.getName();
+            }
+            vo.setDepartmentName(deptName);
             return vo;
         }).toList();
 
@@ -101,6 +109,10 @@ public class CourseCreateServiceImpl implements CourseCreateService {
     public CreateCourseInitialVO createCourseInitial(CreateCourseInitial createCourseInitial) {
         Course course = new Course();
         BeanUtils.copyProperties(createCourseInitial, course);
+        // BeanUtils 无法将 String startAt 自动转为 LocalDateTime，需手动解析
+        if (createCourseInitial.getStartAt() != null && !createCourseInitial.getStartAt().isBlank()) {
+            course.setStartAt(OffsetDateTime.parse(createCourseInitial.getStartAt()).toLocalDateTime());
+        }
         course.setCreatedAt(LocalDateTime.now());
         course.setCreatedBy(SecurityUtils.currentUserId());
         // 先插入课程，获取自增 ID
@@ -359,6 +371,49 @@ public class CourseCreateServiceImpl implements CourseCreateService {
     }
 
     @Override
+    @Transactional
+    public void deleteChapter(Long courseId, Long chapterId) {
+        // 1. 校验课程存在且为草稿
+        Course course = courseMapper.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!Integer.valueOf(0).equals(course.getStatus())) {
+            throw new BusinessException(ErrorCode.COURSE_STATUS_INVALID);
+        }
+
+        // 2. 校验章节存在且属于当前课程
+        CourseChapter chapter = courseChapterMapper.selectById(chapterId);
+        if (chapter == null || !chapter.getCourseId().equals(courseId)) {
+            throw new BusinessException(ErrorCode.COURSE_CHAPTER_NOT_FOUND);
+        }
+
+        // 3. 检查章节下是否存在课程点
+        Long pointCount = coursePointMapper.selectCount(
+                Wrappers.<CoursePoint>lambdaQuery().eq(CoursePoint::getChapterId, chapterId));
+        if (pointCount != null && pointCount > 0) {
+            throw new BusinessException(ErrorCode.COURSE_CHAPTER_HAS_POINTS);
+        }
+
+        // 4. 删除章节
+        courseChapterMapper.deleteById(chapterId);
+
+        // 5. 重新编号该课程剩余章节为连续 1..N
+        List<CourseChapter> remainingChapters = courseChapterMapper.selectList(
+                Wrappers.<CourseChapter>lambdaQuery()
+                        .eq(CourseChapter::getCourseId, courseId)
+                        .orderByAsc(CourseChapter::getSort));
+        int newSort = 1;
+        for (CourseChapter c : remainingChapters) {
+            if (c.getSort() == null || c.getSort() != newSort) {
+                c.setSort(newSort);
+                courseChapterMapper.updateById(c);
+            }
+            newSort++;
+        }
+    }
+
+    @Override
     public CourseDetailVO getCourseDetail(Long courseId) {
         // 1. 查询课程基本信息
         Course course = courseMapper.selectById(courseId);
@@ -370,8 +425,20 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         vo.setCourseId(course.getId());
         vo.setTitle(course.getTitle());
         vo.setSummary(course.getSummary());
+        vo.setLearningObjective(course.getLearningObjective());
         vo.setCategoryId(course.getCategoryId());
         vo.setCoverUrl(course.getCoverUrl());
+        vo.setInstructorId(course.getInstructorId());
+        if (course.getInstructorId() != null) {
+            User instructor = userMapper.selectById(course.getInstructorId());
+            if (instructor != null) {
+                vo.setInstructorName(instructor.getRealName() != null ? instructor.getRealName() : instructor.getUsername());
+                if (instructor.getDeptId() != null) {
+                    Department dept = departmentMapper.selectById(instructor.getDeptId());
+                    if (dept != null) vo.setInstructorDepartmentName(dept.getName());
+                }
+            }
+        }
         vo.setStartAt(course.getStartAt());
         vo.setStatus(convertStatus(course.getStatus()));
         vo.setCompletionRule(convertCompletionRule(course.getCompletionRule()));

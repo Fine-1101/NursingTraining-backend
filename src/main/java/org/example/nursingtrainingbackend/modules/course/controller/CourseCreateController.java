@@ -90,6 +90,13 @@ public class CourseCreateController {
         return Result.success(courseCreateService.updatePoint(courseId, chapterId, pointId, createPoint));
     }
 
+    @DeleteMapping("/courses/{courseId}/chapters/{chapterId}")
+    public Result<Void> deleteChapter(@PathVariable Long courseId,
+                                      @PathVariable Long chapterId) {
+        courseCreateService.deleteChapter(courseId, chapterId);
+        return Result.success(null);
+    }
+
     @DeleteMapping("/courses/{courseId}/chapters/{chapterId}/points/{pointId}")
     public Result<Void> deletePoint(@PathVariable Long courseId,
                                     @PathVariable Long chapterId,

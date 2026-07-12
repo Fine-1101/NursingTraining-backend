@@ -20,6 +20,7 @@ public class CourseDetailVO {
     private LocalDateTime startAt;
     private List<DepartmentVO> departments;
     private String instructorName;
+    private String instructorDepartmentName;
     private String status;
     private String completionRule;
     private Integer currentStep;
