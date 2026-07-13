@@ -35,6 +35,7 @@ build/
 
 ### Frontend submodule ###
 frontend/
+user-front/
 
 ### Temporary test files ###
 GeneratePassword.java
