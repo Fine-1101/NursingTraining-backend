@@ -2,7 +2,7 @@ package org.example.nursingtrainingbackend.modules.course.vo;
 
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Data
 public class CourseUpdateBasicVO {
@@ -13,5 +13,11 @@ public class CourseUpdateBasicVO {
 
     private Integer currentStep;
 
-    private LocalDateTime updatedAt;
+    private String updatedAt;
+
+    public void setUpdatedAt(java.time.LocalDateTime updatedAt) {
+        if (updatedAt != null) {
+            this.updatedAt = updatedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        }
+    }
 }

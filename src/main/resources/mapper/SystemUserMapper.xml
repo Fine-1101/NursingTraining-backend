@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.nursingtrainingbackend.modules.system.mapper.SystemUserMapper">
+
+    <select id="selectPageUsers"
+            resultType="org.example.nursingtrainingbackend.modules.system.vo.SystemUserItemVO">
+        SELECT
+            u.id,
+            u.username,
+            u.real_name,
+            u.avatar_url,
+            u.email,
+            u.phone,
+            u.gender,
+            u.role_type,
+            u.status,
+            u.dept_id,
+            d.name AS dept_name,
+            u.last_login_at,
+            u.created_at,
+            u.updated_at
+        FROM `user` u
+        LEFT JOIN department d ON u.dept_id = d.id
+        <where>
+            u.deleted_at IS NULL
+            <if test="keyword != null and keyword != ''">
+                AND (u.username LIKE CONCAT('%', #{keyword}, '%')
+                     OR u.real_name LIKE CONCAT('%', #{keyword}, '%')
+                     OR u.phone LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="status != null">
+                AND u.status = #{status}
+            </if>
+            <if test="roleType != null">
+                AND u.role_type = #{roleType}
+            </if>
+        </where>
+        ORDER BY u.created_at DESC
+    </select>
+
+</mapper>

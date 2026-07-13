@@ -37,6 +37,16 @@ public class User {
     private String realName;
 
     /**
+     * 头像URL
+     */
+    private String avatarUrl;
+
+    /**
+     * 头像OSS对象键
+     */
+    private String avatarObjectKey;
+
+    /**
      * 手机号
      */
     private String phone;

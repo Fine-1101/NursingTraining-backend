@@ -29,7 +29,8 @@ public class FileController {
             "ARTICLE_ATTACHMENT", "articles/attachments",
             "PPT_FILE", "ppts",
             "VIDEO_FILE", "videos",
-            "VIDEO_COVER", "videos/covers"
+            "VIDEO_COVER", "videos/covers",
+            "COURSE_COVER", "courses/covers"
     );
 
     @PostMapping("/upload")

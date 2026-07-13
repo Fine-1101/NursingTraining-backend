@@ -4,7 +4,10 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
+import org.example.nursingtrainingbackend.config.condition.OssEnabledCondition;
 
 @Configuration
 // 绑定yml中前缀为 app.oss 的配置
@@ -19,6 +22,7 @@ public class OssConfig {
     private String policyExpiration;
 
     @Bean
+    @Conditional(OssEnabledCondition.class)
     public OSS ossClient () {
         // 仅打印地址、桶名，不打印密钥
         System.out.println ("=== OSS 配置加载完成 ===");
