@@ -1,30 +1,27 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { getLearnerHome } from '../../api/learnerHome'
 import CourseCard from './CourseCard.vue'
 import LearningCalendar from './LearningCalendar.vue'
 import ProgressOverview from './ProgressOverview.vue'
 import RecentRecords from './RecentRecords.vue'
 
+const emit = defineEmits(['open-detail', 'start-learning'])
+
 const loading = ref(false)
 const errorMessage = ref('')
 const homeData = ref(null)
 
-const stats = computed(() => homeData.value?.courseStats || {
-  allCount: 0,
-  recommendedCount: 0,
-  completedCount: 0,
-  learningCount: 0,
-  notStartedCount: 0,
-})
+function openDetail(course) {
+  emit('open-detail', course.courseId)
+}
 
-const statTabs = computed(() => [
-  { label: '全部课程', value: stats.value.allCount, active: true },
-  { label: '推荐课程', value: stats.value.recommendedCount },
-  { label: '继续学习', value: stats.value.learningCount },
-  { label: '已完成', value: stats.value.completedCount },
-  { label: '未开始', value: stats.value.notStartedCount },
-])
+function startLearning(course) {
+  emit('start-learning', {
+    courseId: course.courseId,
+    pointId: course.nextPointId || course.lastPointId || course.pointId || null,
+  })
+}
 
 async function loadHome() {
   loading.value = true
@@ -44,13 +41,6 @@ onMounted(loadHome)
 
 <template>
   <div class="home-content">
-    <section class="stats-card">
-      <button v-for="item in statTabs" :key="item.label" class="stat-tab" :class="{ active: item.active }" type="button">
-        <span>{{ item.label }}</span>
-        <strong>{{ item.value }}</strong>
-      </button>
-    </section>
-
     <div class="home-grid">
       <div class="home-main">
         <section class="home-section">
@@ -59,7 +49,13 @@ onMounted(loadHome)
             <a href="/">查看全部</a>
           </div>
           <div v-if="homeData?.recommendedCourses?.length" class="course-grid">
-            <CourseCard v-for="course in homeData.recommendedCourses" :key="course.courseId" :course="course" />
+            <CourseCard
+              v-for="course in homeData.recommendedCourses"
+              :key="course.courseId"
+              :course="course"
+              @open-detail="openDetail(course)"
+              @start-learning="startLearning(course)"
+            />
           </div>
           <p v-else class="empty-text">暂无推荐课程</p>
         </section>
@@ -70,7 +66,14 @@ onMounted(loadHome)
             <a href="/">查看全部</a>
           </div>
           <div v-if="homeData?.continueCourses?.length" class="continue-grid">
-            <CourseCard v-for="course in homeData.continueCourses" :key="course.courseId" :course="course" compact />
+            <CourseCard
+              v-for="course in homeData.continueCourses"
+              :key="course.courseId"
+              :course="course"
+              compact
+              @open-detail="openDetail(course)"
+              @start-learning="startLearning(course)"
+            />
           </div>
           <p v-else class="empty-text">暂无继续学习课程</p>
         </section>

@@ -13,7 +13,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['change-module'])
+const emit = defineEmits(['change-module', 'logout'])
 
 const moduleTitles = {
   home: {
@@ -32,9 +32,18 @@ const moduleTitles = {
     title: '个人中心',
     subtitle: '管理个人资料和账号信息',
   },
+  courseDetail: {
+    title: '课程详情',
+    subtitle: '首页 > 我的课程 > 课程详情',
+  },
+  courseLearning: {
+    title: '课程学习',
+    subtitle: '首页 > 我的课程 > 课程详情 > 课程学习',
+  },
 }
 
 const pageMeta = computed(() => moduleTitles[props.activeModule] || moduleTitles.home)
+const showBreadcrumb = computed(() => ['courseDetail', 'courseLearning'].includes(props.activeModule))
 </script>
 
 <template>
@@ -68,8 +77,26 @@ const pageMeta = computed(() => moduleTitles[props.activeModule] || moduleTitles
     <section class="main-panel">
       <header class="top-bar">
         <div class="top-title">
-          <h1>{{ pageMeta.title }}</h1>
-          <p>{{ pageMeta.subtitle }}</p>
+          <h1 v-if="activeModule !== 'courseLearning'">{{ pageMeta.title }}</h1>
+          <p v-if="!showBreadcrumb">{{ pageMeta.subtitle }}</p>
+          <p v-else class="top-breadcrumb">
+            <button type="button" @click="emit('change-module', 'home')">首页</button>
+            <span>></span>
+            <button type="button" @click="emit('change-module', 'courses')">我的课程</button>
+            <span>></span>
+            <button
+              v-if="activeModule === 'courseLearning'"
+              type="button"
+              @click="emit('change-module', 'courseDetail')"
+            >
+              课程详情
+            </button>
+            <strong v-else>课程详情</strong>
+            <template v-if="activeModule === 'courseLearning'">
+              <span>></span>
+              <strong>课程学习</strong>
+            </template>
+          </p>
         </div>
 
         <div class="top-actions">
@@ -78,10 +105,11 @@ const pageMeta = computed(() => moduleTitles[props.activeModule] || moduleTitles
             <svg viewBox="0 0 24 24"><path d="m20 18.6-4.7-4.7A7 7 0 1 0 13.9 15.3l4.7 4.7 1.4-1.4ZM5 10a5 5 0 1 1 10 0 5 5 0 0 1-10 0Z" /></svg>
           </label>
           <div class="user-box">
-            <span class="avatar">{{ (user.nickname || user.username || '张').slice(0, 1) }}</span>
-            <strong>{{ user.nickname || user.username || '张学员' }}</strong>
+            <span class="avatar">{{ (user.nickname || user.username || '学').slice(0, 1) }}</span>
+            <strong>{{ user.nickname || user.username || '学员' }}</strong>
             <small>{{ user.role || '学员' }}</small>
             <svg viewBox="0 0 24 24"><path d="m7 9 5 5 5-5H7Z" /></svg>
+            <button class="logout-button" type="button" @click="emit('logout')">退出</button>
           </div>
         </div>
       </header>

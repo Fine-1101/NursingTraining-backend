@@ -2,6 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getLearnerCourses, getLearnerCourseStats } from '../../api/learnerCourses'
 
+const emit = defineEmits(['open-detail', 'start-learning'])
+
 const learningTabs = [
   { label: '全部', value: 'ALL', countKey: 'allCount' },
   { label: '未开始', value: 'NOT_STARTED', countKey: 'notStartedCount' },
@@ -109,6 +111,17 @@ function changePage(nextPage) {
   loadCourses()
 }
 
+function openCourseDetail(course) {
+  emit('open-detail', course.courseId)
+}
+
+function startLearning(course) {
+  emit('start-learning', {
+    courseId: course.courseId,
+    pointId: course.nextPointId || course.lastPointId || course.pointId || null,
+  })
+}
+
 onMounted(refreshAll)
 </script>
 
@@ -152,13 +165,21 @@ onMounted(refreshAll)
     </section>
 
     <section class="course-list-card">
-      <div class="course-list-head">
+      <!-- <div class="course-list-head">
         <h2>课程列表</h2>
         <span>{{ paginationText }}</span>
-      </div>
+      </div> -->
 
       <div v-if="pageData.records.length" class="my-course-list">
-        <article v-for="course in pageData.records" :key="course.courseId" class="my-course-item">
+        <article
+          v-for="course in pageData.records"
+          :key="course.courseId"
+          class="my-course-item"
+          tabindex="0"
+          role="button"
+          @click="openCourseDetail(course)"
+          @keyup.enter="openCourseDetail(course)"
+        >
           <div class="my-course-cover">
             <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" />
             <svg v-else viewBox="0 0 80 80"><path d="M14 18h52v44H14V18Zm12 12v20l16-10-16-10Zm24 2h8v4h-8v-4Zm0 10h8v4h-8v-4Z" /></svg>
@@ -187,7 +208,7 @@ onMounted(refreshAll)
             </div>
           </div>
 
-          <button class="course-enter-button" type="button">{{ course.buttonText }}</button>
+          <button class="course-enter-button" type="button" @click.stop="startLearning(course)">{{ course.buttonText }}</button>
         </article>
       </div>
 

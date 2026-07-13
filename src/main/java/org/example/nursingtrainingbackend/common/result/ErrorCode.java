@@ -16,6 +16,8 @@ public enum ErrorCode {
     // ==================== 认证模块 (1xxx) ====================
     USERNAME_OR_PASSWORD_ERROR(1001, "用户名或密码错误", HttpStatus.BAD_REQUEST),
     USER_DISABLED(1002, "账号已被禁用", HttpStatus.FORBIDDEN),
+    USER_NOT_FOUND(1003, "用户不存在", HttpStatus.NOT_FOUND),
+    USERNAME_EXISTS(1004, "用户名已存在", HttpStatus.BAD_REQUEST),
 
     // ==================== 文件上传模块 (2xxx) ====================
     FILE_EMPTY(2001, "上传文件不能为空", HttpStatus.BAD_REQUEST),
@@ -96,7 +98,22 @@ public enum ErrorCode {
     PPT_STATUS_INVALID(4202, "当前状态不允许该操作", HttpStatus.BAD_REQUEST),
     PPT_HAS_COURSE(4203, "PPT 已关联课程，不能删除", HttpStatus.CONFLICT),
     OSS_INVALID_URL(4204, "OSS 文件地址不合法", HttpStatus.BAD_REQUEST),
-    OSS_FILE_NOT_FOUND(4205, "原始文件不存在", HttpStatus.NOT_FOUND);
+    OSS_FILE_NOT_FOUND(4205, "原始文件不存在", HttpStatus.NOT_FOUND),
+
+    // ==================== 系统设置/学员管理模块 (71xx) ====================
+    ADMIN_NOT_FOUND(7101, "当前管理员不存在或已停用", HttpStatus.NOT_FOUND),
+    STUDENT_NOT_FOUND(7102, "学员不存在或已删除", HttpStatus.NOT_FOUND),
+    STUDENT_ID_INVALID(7103, "学员 ID 不合法", HttpStatus.BAD_REQUEST),
+    PHONE_FORMAT_INVALID(7104, "手机号格式不合法", HttpStatus.BAD_REQUEST),
+    DEPARTMENT_NOT_FOUND_OR_DISABLED(7105, "科室不存在或已停用", HttpStatus.BAD_REQUEST),
+    NOT_STUDENT_ROLE(7106, "当前用户不是学员，不能执行该操作", HttpStatus.CONFLICT),
+    STUDENT_USERNAME_EXISTS(7107, "工号已存在", HttpStatus.CONFLICT),
+    STUDENT_QUERY_FAILED(7108, "学员查询失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    STUDENT_SAVE_FAILED(7109, "学员保存失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    STUDENT_DELETE_FAILED(7110, "学员删除失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    AVATAR_URL_OR_KEY_INVALID(7111, "头像地址或 OSS Key 不合法", HttpStatus.BAD_REQUEST),
+    COURSE_NOT_AVAILABLE_FOR_STUDENT(7112, "课程不存在、未发布或该学员不可学习", HttpStatus.NOT_FOUND),
+    STUDENT_PROGRESS_UPDATE_FAILED(7113, "学员课程进度更新失败", HttpStatus.CONFLICT);
 
     private final int code;
     private final String message;

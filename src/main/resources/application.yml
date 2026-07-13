@@ -41,7 +41,7 @@ app:
     secret: ${JWT_SECRET:nursing-training-secret-key-for-jwt-token-generation-2026}
     expiration: ${JWT_EXPIRATION:2h}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5174}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5176,http://localhost:5177}
   upload:
     max-size: ${APP_UPLOAD_MAX_BYTES:104857600}
     allowed-content-types: ${APP_UPLOAD_TYPES:image/jpeg,image/png,image/gif,application/pdf,video/mp4,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation}

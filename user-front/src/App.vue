@@ -3,13 +3,18 @@ import { ref } from 'vue'
 import AuthPage from './components/auth/AuthPage.vue'
 import HomePage from './components/home/HomePage.vue'
 import MyCoursesPage from './components/courses/MyCoursesPage.vue'
+import CourseDetailPage from './components/courses/CourseDetailPage.vue'
+import CourseLearningPage from './components/courses/CourseLearningPage.vue'
+import LearningRecordsPage from './components/records/LearningRecordsPage.vue'
 import DashboardLayout from './layouts/DashboardLayout.vue'
 import { getStoredUser } from './api/request'
-import { register } from './api/auth'
+import { logout, register } from './api/auth'
 import './styles/app.css'
 
 const page = ref(getStoredUser().username ? 'dashboard' : 'auth')
 const activeModule = ref('home')
+const selectedCourseId = ref(null)
+const selectedPointId = ref(null)
 const authView = ref('login')
 const selectedRole = ref('')
 const registerDraft = ref({})
@@ -63,6 +68,35 @@ function handleLoginSuccess(user) {
   currentUser.value = user || getStoredUser()
   page.value = 'dashboard'
 }
+
+function openCourseDetail(courseId) {
+  selectedCourseId.value = courseId
+  activeModule.value = 'courseDetail'
+}
+
+function openCourseLearning(payload) {
+  selectedCourseId.value = payload?.courseId || selectedCourseId.value
+  selectedPointId.value = payload?.pointId || null
+  activeModule.value = 'courseLearning'
+}
+
+function backToCourses() {
+  activeModule.value = 'courses'
+}
+
+function backToCourseDetail() {
+  activeModule.value = selectedCourseId.value ? 'courseDetail' : 'courses'
+}
+
+async function handleLogout() {
+  await logout()
+  currentUser.value = {}
+  selectedCourseId.value = null
+  selectedPointId.value = null
+  activeModule.value = 'home'
+  authView.value = 'login'
+  page.value = 'auth'
+}
 </script>
 
 <template>
@@ -87,9 +121,31 @@ function handleLoginSuccess(user) {
         :user="currentUser"
         :active-module="activeModule"
         @change-module="activeModule = $event"
+        @logout="handleLogout"
       >
-        <HomePage v-if="activeModule === 'home'" />
-        <MyCoursesPage v-else-if="activeModule === 'courses'" />
+        <HomePage
+          v-if="activeModule === 'home'"
+          @open-detail="openCourseDetail"
+          @start-learning="openCourseLearning"
+        />
+        <MyCoursesPage
+          v-else-if="activeModule === 'courses'"
+          @open-detail="openCourseDetail"
+          @start-learning="openCourseLearning"
+        />
+        <CourseDetailPage
+          v-else-if="activeModule === 'courseDetail' && selectedCourseId"
+          :course-id="selectedCourseId"
+          @back="backToCourses"
+          @start-learning="openCourseLearning"
+        />
+        <CourseLearningPage
+          v-else-if="activeModule === 'courseLearning' && selectedCourseId"
+          :course-id="selectedCourseId"
+          :point-id="selectedPointId"
+          @back="backToCourseDetail"
+        />
+        <LearningRecordsPage v-else-if="activeModule === 'records'" />
         <div v-else class="module-placeholder">
           <h1>{{ activeModule === 'records' ? '学习记录' : '个人中心' }}</h1>
           <p>模块待开发</p>

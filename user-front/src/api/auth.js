@@ -1,4 +1,4 @@
-import { request, setAuthSession } from './request'
+import { clearAuthSession, request, setAuthSession } from './request'
 
 export async function login(username, password) {
   const session = await request('/api/auth/login', {
@@ -18,4 +18,14 @@ export async function register(payload) {
 
   setAuthSession(session)
   return session
+}
+
+export async function logout() {
+  try {
+    await request('/api/auth/logout', {
+      method: 'POST',
+    })
+  } finally {
+    clearAuthSession()
+  }
 }
