@@ -1,6 +1,7 @@
 package org.example.nursingtrainingbackend.modules.course.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.example.nursingtrainingbackend.common.event.CacheEvictionEvent;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
 import org.example.nursingtrainingbackend.modules.course.dto.CompletionRuleDTO;
@@ -20,6 +21,7 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.mapper.PptMapper;
 import org.example.nursingtrainingbackend.modules.courseware.video.entity.Video;
 import org.example.nursingtrainingbackend.modules.courseware.video.mapper.VideoMapper;
+import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.tag.entity.Tag;
 import org.example.nursingtrainingbackend.modules.user.entity.Department;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
@@ -28,12 +30,17 @@ import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.SecurityUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -66,6 +73,14 @@ public class CourseCreateServiceImpl implements CourseCreateService {
     private VideoMapper videoMapper;
     @Autowired
     private PptMapper pptMapper;
+    @Qualifier("ossFileServiceImpl")
+    @Autowired
+    private FileService fileService;
+    private final ApplicationEventPublisher eventPublisher;
+
+    public CourseCreateServiceImpl(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     @Override
     public List<InstructorOptionVO> getInstructorOptions(String keyword, Integer limit) {
@@ -117,6 +132,12 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         course.setCreatedBy(SecurityUtils.currentUserId());
         // 先插入课程，获取自增 ID
         courseMapper.insert(course);
+        
+        // 标记课程封面文件已使用
+        if (createCourseInitial.getCoverUrl() != null && !createCourseInitial.getCoverUrl().isBlank()) {
+            String coverKey = extractObjectKey(createCourseInitial.getCoverUrl());
+            fileService.markFileUsed(coverKey, "COURSE_COVER", course.getId());
+        }
 
         if (createCourseInitial.getDepartments() != null) {
             for (DepartmentDTO departmentDTO : createCourseInitial.getDepartments()) {
@@ -140,6 +161,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         CreateCourseInitialVO vo = new CreateCourseInitialVO();
         vo.setCourseId(course.getId());
         vo.setCreatedAt(course.getCreatedAt());
+        //eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.DASHBOARD));
         return vo;
     }
 
@@ -547,7 +569,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         summary.setPptCount(totalPpts);
 
         // 检查结构是否有效（至少有一个必修课程点）
-        List<String> errors = new java.util.ArrayList<>();
+        List<String> errors = new ArrayList<>();
         if (requiredCount == 0 && optionalCount == 0) {
             errors.add("课程至少需要包含一个课程点");
         }
@@ -703,7 +725,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
 
         int requiredPointCount = 0;
         int optionalPointCount = 0;
-        List<Long> pointIds = new java.util.ArrayList<>();
+        List<Long> pointIds = new ArrayList<>();
         for (CoursePoint p : points) {
             if (p.getRequired() != null && p.getRequired() == 1) {
                 requiredPointCount++;
@@ -753,7 +775,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         }).toList();
 
         // 7. 结构校验
-        List<String> errors = new java.util.ArrayList<>();
+        List<String> errors = new ArrayList<>();
         Long chapterCount = courseChapterMapper.selectCount(
                 Wrappers.<CourseChapter>lambdaQuery().eq(CourseChapter::getCourseId, courseId));
         if (chapterCount == 0) {
@@ -885,5 +907,24 @@ public class CourseCreateServiceImpl implements CourseCreateService {
             count++;
         }
         return count;
+    }
+    
+    /**
+     * 从完整URL中提取OSS ObjectKey
+     */
+    private String extractObjectKey(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        try {
+            URI uri = new URI(url);
+            String path = uri.getPath();
+            if (path != null && path.length() > 1) {
+                return path.startsWith("/") ? path.substring(1) : path;
+            }
+        } catch (URISyntaxException ignored) {
+        }
+        String trimmed = url.startsWith("/") ? url.substring(1) : url;
+        return trimmed;
     }
 }

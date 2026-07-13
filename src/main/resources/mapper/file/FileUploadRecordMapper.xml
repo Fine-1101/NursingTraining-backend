@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.nursingtrainingbackend.modules.file.mapper.FileUploadRecordMapper">
+
+    <select id="selectUnusedRecordsBefore" resultType="org.example.nursingtrainingbackend.modules.file.entity.FileUploadRecord">
+        SELECT *
+        FROM file_upload_record
+        WHERE used = 0
+          AND created_at &lt; #{beforeTime}
+          AND deleted_at IS NULL
+    </select>
+
+</mapper>

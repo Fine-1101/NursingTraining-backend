@@ -17,6 +17,7 @@ import org.example.nursingtrainingbackend.modules.courseware.video.mapper.VideoM
 import org.example.nursingtrainingbackend.modules.courseware.video.mapper.VideoStatSnapshotMapper;
 import org.example.nursingtrainingbackend.modules.courseware.video.service.VideoService;
 import org.example.nursingtrainingbackend.modules.courseware.video.vo.*;
+import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.AuthenticatedUser;
@@ -54,6 +55,7 @@ public class VideoServiceImpl implements VideoService {
     private final OSS ossClient;
     private final OssConfig ossConfig;
     private final CoursePointVideoMapper coursePointVideoMapper;
+    private final FileService fileService;
     @Override
     public VideoPlayUrlVO getVideoPlayUrl(Long id, Integer expiresIn) {
         LambdaQueryWrapper<Video> wrapper = new LambdaQueryWrapper<>();
@@ -308,6 +310,15 @@ public class VideoServiceImpl implements VideoService {
         }
 
         videoMapper.insert(video);
+        
+        // 标记视频文件和封面文件已使用
+       // String videoKey = extractOssKey(request.getVideoUrl());
+        fileService.markFileUsed(videoKey, "VIDEO_FILE", video.getId());
+        
+        if (request.getCoverUrl() != null && !request.getCoverUrl().isBlank()) {
+            String coverKey = extractOssKey(request.getCoverUrl());
+            fileService.markFileUsed(coverKey, "VIDEO_COVER", video.getId());
+        }
 
         VideoUploadResponseVO response = new VideoUploadResponseVO();
         response.setId(video.getId());

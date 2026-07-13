@@ -6,11 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.page.PageResult;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
+import org.example.nursingtrainingbackend.modules.learning.entity.UserCourseProgress;
+import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseProgressMapper;
 import org.example.nursingtrainingbackend.modules.system.dto.StudentQueryDTO;
 import org.example.nursingtrainingbackend.modules.system.dto.StudentUpdateDTO;
-import org.example.nursingtrainingbackend.modules.system.entity.UserCourseProgress;
+//import org.example.nursingtrainingbackend.modules.system.entity.UserCourseProgress;
 import org.example.nursingtrainingbackend.modules.system.mapper.SettingsStudentMapper;
-import org.example.nursingtrainingbackend.modules.system.mapper.UserCourseProgressMapper;
+//import org.example.nursingtrainingbackend.modules.system.mapper.UserCourseProgressMapper;
 import org.example.nursingtrainingbackend.modules.system.service.SettingsStudentService;
 import org.example.nursingtrainingbackend.modules.system.vo.*;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
@@ -19,12 +21,14 @@ import org.example.nursingtrainingbackend.security.SecurityUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -32,12 +36,14 @@ import java.util.List;
 public class SettingsStudentServiceImpl implements SettingsStudentService {
 
     private static final String DIST_CACHE_PREFIX = "nursing:admin:settings:student_department_distribution:v1:";
+    private static final long CACHE_TTL_MINUTES = 5;
 
     private final SettingsStudentMapper settingsStudentMapper;
     private final UserCourseProgressMapper userCourseProgressMapper;
     private final UserMapper userMapper;
     private final StringRedisTemplate redisTemplate;
 
+    private final ObjectMapper objectMapper;
     @Override
     public CurrentUserVO getCurrentUser() {
         Long currentUserId = SecurityUtils.currentUserId();
@@ -146,14 +152,15 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
     @Override
     public DepartmentDistributionVO getDepartmentDistribution(boolean activeOnly) {
         String cacheKey = DIST_CACHE_PREFIX + activeOnly;
-        // Redis 不可用时直接查 MySQL
+        // 尝试从 Redis 获取缓存
+        String cachedJson = null;
         try {
-            String cached = redisTemplate.opsForValue().get(cacheKey);
-            if (cached != null && !cached.isBlank()) {
-                // 第一版不实现缓存反序列化，直接走 MySQL
+            cachedJson = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedJson != null && !cachedJson.isBlank()) {
+                return objectMapper.readValue(cachedJson, DepartmentDistributionVO.class);
             }
         } catch (Exception e) {
-            log.warn("Failed to read distribution cache", e);
+            log.warn("读取科室分布缓存失败, key={}", cacheKey, e);
         }
 
         List<DepartmentDistributionItemVO> rawItems =
@@ -177,6 +184,13 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         DepartmentDistributionVO vo = new DepartmentDistributionVO();
         vo.setTotal(total);
         vo.setItems(rawItems);
+        // 将结果写入 Redis 缓存
+        try {
+            String json = objectMapper.writeValueAsString(vo);
+            redisTemplate.opsForValue().set(cacheKey, json, CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("写入科室分布缓存失败, key={}", cacheKey, e);
+        }
         return vo;
     }
 

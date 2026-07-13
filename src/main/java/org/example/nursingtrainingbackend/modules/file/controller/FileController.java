@@ -8,6 +8,7 @@ import org.example.nursingtrainingbackend.modules.file.dto.UploadPolicyRequest;
 import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.file.vo.FileUploadResponse;
 import org.example.nursingtrainingbackend.modules.file.vo.UploadPolicyResponse;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,13 +37,14 @@ public class FileController {
     @PostMapping("/upload")
     public Result<FileUploadResponse> upload(@RequestPart("file") MultipartFile file,
             @RequestParam(required = false) String uploadType,
-            @RequestParam(defaultValue = "files") @Pattern(regexp = "^[a-zA-Z0-9/_-]{1,64}$") String directory) {
+            @RequestParam(defaultValue = "files") @Pattern(regexp = "^[a-zA-Z0-9/_-]{1,64}$") String directory,
+            Authentication authentication) {
         // 如果提供了 uploadType，则使用映射的目录；否则使用 directory 参数
         String targetDirectory = directory;
         if (uploadType != null && !uploadType.isBlank()) {
             targetDirectory = UPLOAD_TYPE_TO_DIRECTORY.getOrDefault(uploadType, directory);
         }
-        return Result.success(fileService.upload(file, targetDirectory));
+        return Result.success(fileService.upload(file, targetDirectory, authentication));
     }
 
     @PostMapping("/policy")

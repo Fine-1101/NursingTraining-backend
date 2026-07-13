@@ -13,6 +13,7 @@ import org.example.nursingtrainingbackend.modules.course.vo.CourseExportRowVO;
 import org.example.nursingtrainingbackend.modules.course.vo.CourseItemVO;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface CourseMapper extends BaseMapper<Course> {
@@ -33,4 +34,7 @@ public interface CourseMapper extends BaseMapper<Course> {
 
     @Select("SELECT * FROM course_point WHERE course_id = #{id} ORDER BY sort ASC")
     CoursePoint selectPointByCourseId(Long id);
+
+    @Select("SELECT id, title FROM course")
+    List<Map<String, Object>> selectMap();
 }

@@ -19,6 +19,8 @@ public enum ErrorCode {
     USER_DISABLED(1002, "账号已被禁用", HttpStatus.FORBIDDEN),
     USERNAME_EXISTS(1003, "用户名已存在", HttpStatus.BAD_REQUEST),
     INVALID_ROLE_TYPE(1004, "角色类型不合法", HttpStatus.BAD_REQUEST),
+    DEPT_NOT_EXISTS(1005, "部门不存在", HttpStatus.BAD_REQUEST),
+    USER_NOT_FOUND(1006, "用户不存在", HttpStatus.NOT_FOUND),
 
     // ==================== 文件上传模块 (2xxx) ====================
     FILE_EMPTY(2001, "上传文件不能为空", HttpStatus.BAD_REQUEST),
@@ -115,10 +117,27 @@ public enum ErrorCode {
     LEARNER_RECORD_RESOURCE_TYPE_INVALID(6403, "课件类型参数不合法", HttpStatus.BAD_REQUEST),
     LEARNER_RECORD_PAGE_PARAM_INVALID(6404, "分页参数不合法", HttpStatus.BAD_REQUEST),
     LEARNER_RECORD_QUERY_FAILED(6405, "学习记录查询失败", HttpStatus.INTERNAL_SERVER_ERROR),
-    LEARNER_RECORD_STATS_FAILED(6406, "学习记录统计失败", HttpStatus.INTERNAL_SERVER_ERROR);
+    LEARNER_RECORD_STATS_FAILED(6406, "学习记录统计失败", HttpStatus.INTERNAL_SERVER_ERROR),
 
+    // ==================== 系统设置/学员管理模块 (71xx) ====================
+    ADMIN_NOT_FOUND(7101, "当前管理员不存在或已停用", HttpStatus.NOT_FOUND),
+    STUDENT_NOT_FOUND(7102, "学员不存在或已删除", HttpStatus.NOT_FOUND),
+    STUDENT_ID_INVALID(7103, "学员 ID 不合法", HttpStatus.BAD_REQUEST),
+    PHONE_FORMAT_INVALID(7104, "手机号格式不合法", HttpStatus.BAD_REQUEST),
+    DEPARTMENT_NOT_FOUND_OR_DISABLED(7105, "科室不存在或已停用", HttpStatus.BAD_REQUEST),
+    NOT_STUDENT_ROLE(7106, "当前用户不是学员，不能执行该操作", HttpStatus.CONFLICT),
+    STUDENT_USERNAME_EXISTS(7107, "工号已存在", HttpStatus.CONFLICT),
+    STUDENT_QUERY_FAILED(7108, "学员查询失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    STUDENT_SAVE_FAILED(7109, "学员保存失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    STUDENT_DELETE_FAILED(7110, "学员删除失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    AVATAR_URL_OR_KEY_INVALID(7111, "头像地址或 OSS Key 不合法", HttpStatus.BAD_REQUEST),
+    COURSE_NOT_AVAILABLE_FOR_STUDENT(7112, "课程不存在、未发布或该学员不可学习", HttpStatus.NOT_FOUND),
+    STUDENT_PROGRESS_UPDATE_FAILED(7113, "学员课程进度更新失败", HttpStatus.CONFLICT),
 
-
+    //管理端首页面板错误码
+    DASHBOARD_PANEL_INVALID_ID(7001, "面板ID格式不合法", HttpStatus.BAD_REQUEST),
+    DASHBOARD_PANEL_NOT_FOUND(7002, "面板统计失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    DASHBOARD_PANEL_QUERY_FAILED(7003, "面板查询失败", HttpStatus.INTERNAL_SERVER_ERROR);
     private final int code;
     private final String message;
     private final HttpStatus httpStatus;

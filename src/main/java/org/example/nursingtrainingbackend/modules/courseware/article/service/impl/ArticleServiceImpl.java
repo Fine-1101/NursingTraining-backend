@@ -18,6 +18,7 @@ import org.example.nursingtrainingbackend.modules.courseware.article.mapper.Arti
 import org.example.nursingtrainingbackend.modules.courseware.article.mapper.ArticleStatSnapshotMapper;
 import org.example.nursingtrainingbackend.modules.courseware.article.service.ArticleService;
 import org.example.nursingtrainingbackend.modules.courseware.article.vo.*;
+import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.AuthenticatedUser;
@@ -42,6 +43,7 @@ public class ArticleServiceImpl implements ArticleService {
     private final UserMapper userMapper;
     private final ArticleAttachmentProperties attachmentProperties;
     private final ArticleStatSnapshotMapper snapshotMapper;
+    private final FileService fileService;
     
     @Override
     public PageResult<ArticleListItemVO> listArticles(String keyword, String status, 
@@ -236,6 +238,16 @@ public class ArticleServiceImpl implements ArticleService {
         
         // 保存文章
         articleMapper.insert(article);
+        
+        // 标记封面和附件文件已使用
+        if (request.getCoverUrl() != null && !request.getCoverUrl().isBlank()) {
+            String coverKey = extractObjectKey(request.getCoverUrl());
+            fileService.markFileUsed(coverKey, "ARTICLE_COVER", article.getId());
+        }
+        if (request.getAttachmentUrl() != null && !request.getAttachmentUrl().isBlank()) {
+            String attachmentKey = extractObjectKey(request.getAttachmentUrl());
+            fileService.markFileUsed(attachmentKey, "ARTICLE_ATTACHMENT", article.getId());
+        }
         
         // 构建响应
         ArticleUploadResponseVO response = new ArticleUploadResponseVO();
@@ -701,5 +713,24 @@ public class ArticleServiceImpl implements ArticleService {
         if (!valid) {
             throw new BusinessException(ErrorCode.ARTICLE_STATUS_INVALID);
         }
+    }
+    
+    /**
+     * 从完整URL中提取OSS ObjectKey
+     */
+    private String extractObjectKey(String url) {
+        if (url == null || url.isBlank()) {
+            return null;
+        }
+        try {
+            java.net.URI uri = new java.net.URI(url);
+            String path = uri.getPath();
+            if (path != null && path.length() > 1) {
+                return path.startsWith("/") ? path.substring(1) : path;
+            }
+        } catch (java.net.URISyntaxException ignored) {
+        }
+        String trimmed = url.startsWith("/") ? url.substring(1) : url;
+        return trimmed;
     }
 }

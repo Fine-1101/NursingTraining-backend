@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
@@ -18,13 +19,17 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.service.PptServ
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptDetailVO;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptListItem;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptOverviewVO;
+import org.example.nursingtrainingbackend.modules.file.service.FileService;
+//import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -35,27 +40,16 @@ import java.util.Set;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PptServiceImpl implements PptService {
 
     private final PptMapper pptMapper;
     private final UserMapper userMapper;
-    private OSS ossClient;
-    private OssProperties ossProperties;
+    private final OSS ossClient;
+    private final OssProperties ossProperties;
+    @Qualifier("ossFileServiceImpl")
+    private final FileService fileService;
 
-    public PptServiceImpl(PptMapper pptMapper, UserMapper userMapper) {
-        this.pptMapper = pptMapper;
-        this.userMapper = userMapper;
-    }
-
-    @Autowired(required = false)
-    public void setOssClient(OSS ossClient) {
-        this.ossClient = ossClient;
-    }
-
-    @Autowired(required = false)
-    public void setOssProperties(OssProperties ossProperties) {
-        this.ossProperties = ossProperties;
-    }
 
     private static final Set<String> VALID_TRANSITIONS = new HashSet<>(Arrays.asList(
             "DRAFT->PUBLISHED", "DRAFT->OFFLINE",
@@ -86,6 +80,11 @@ public class PptServiceImpl implements PptService {
         }
 
         pptMapper.insert(ppt);
+
+        // 标记PPT文件已使用
+        String pptKey = extractKeyFromUrl(ppt.getOriginalUrl());
+        fileService.markFileUsed(pptKey, "PPT_FILE", ppt.getId());
+
         return ppt;
     }
 
@@ -182,6 +181,7 @@ public class PptServiceImpl implements PptService {
         if (expiresIn == null || expiresIn < 60) expiresIn = 600;
         if (expiresIn > 3600) expiresIn = 3600;
 
+        // ✅ 添加 import java.util.Date
         Date expiration = new Date(System.currentTimeMillis() + expiresIn * 1000L);
         GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(
                 ossProperties.getBucketName(), key);
@@ -261,7 +261,7 @@ public class PptServiceImpl implements PptService {
 
     private String extractKeyFromUrl(String url) {
         try {
-            java.net.URI uri = new java.net.URI(url);
+            URI uri = new URI(url);
             String path = uri.getPath();
             return path.startsWith("/") ? path.substring(1) : path;
         } catch (Exception e) {
