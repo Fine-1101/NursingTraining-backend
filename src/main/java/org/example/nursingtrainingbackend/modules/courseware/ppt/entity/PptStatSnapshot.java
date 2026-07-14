@@ -1,5 +1,6 @@
 package org.example.nursingtrainingbackend.modules.courseware.ppt.entity;
 
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
@@ -9,6 +10,7 @@ import java.time.LocalDate;
 @TableName("ppt_stat_snapshot")
 public class PptStatSnapshot {
 
+    @TableId
     private LocalDate statDate;
 
     private Long totalPpts;

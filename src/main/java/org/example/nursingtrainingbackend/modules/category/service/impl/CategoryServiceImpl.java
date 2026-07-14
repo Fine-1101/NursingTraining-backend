@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
+import org.example.nursingtrainingbackend.common.event.CacheEvictionEvent;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
 import org.example.nursingtrainingbackend.modules.category.dto.CategoryCreateRequest;
@@ -15,23 +16,45 @@ import org.example.nursingtrainingbackend.modules.category.entity.Category;
 import org.example.nursingtrainingbackend.modules.category.mapper.CategoryMapper;
 import org.example.nursingtrainingbackend.modules.category.service.CategoryService;
 import org.example.nursingtrainingbackend.modules.category.vo.*;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
     private final CategoryMapper categoryMapper;
+
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
+
     private static final org.slf4j.Logger log =
             org.slf4j.LoggerFactory.getLogger(CategoryServiceImpl.class);
+    private static final String TREE_CACHE_PREFIX = "nursing:category:tree:v1:";
+    private static final String OVERVIEW_CACHE_KEY = "nursing:category:overview:v1";
+    private static final long CACHE_TTL_MINUTES = 10;
 
 
     @Override
     public CategoryTreeResult getTree(CategoryTreeQuery query) {
+        String cacheKey = TREE_CACHE_PREFIX + query.status() + ":" + (query.keyword() != null ? query.keyword() : "");
+
+        try {
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                return objectMapper.readValue(cached, CategoryTreeResult.class);
+            }
+        } catch (Exception e) {
+            log.warn("读取分类树缓存失败, key={}", cacheKey, e);
+        }
 
         log.info("[CategoryTree] 查询分类树，入参 query={}", query);
 
@@ -153,7 +176,16 @@ public class CategoryServiceImpl implements CategoryService {
         log.info("[CategoryTree] 最终返回的树根节点数={}, 总节点数={}", roots.size(), nodeMap.size());
 
         long total = nodeMap.size();
-        return new CategoryTreeResult(roots, total);
+        CategoryTreeResult result = new CategoryTreeResult(roots, total);
+
+        try {
+            String json = objectMapper.writeValueAsString(result);
+            redisTemplate.opsForValue().set(cacheKey, json, CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("写入分类树缓存失败, key={}", cacheKey, e);
+        }
+
+        return result;
     }
 
     @Override
@@ -211,6 +243,9 @@ public class CategoryServiceImpl implements CategoryService {
             Category parent = categoryMapper.selectById(parentId);
             parentName = parent.getName();
         }
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_TREE));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_OVERVIEW));
+
 
         return CategoryVO.from(category, parentName);
     }
@@ -289,6 +324,8 @@ public class CategoryServiceImpl implements CategoryService {
                     .setSql("level = level + " + levelDelta)
                     .set(Category::getUpdatedAt, LocalDateTime.now()));
         }
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_TREE));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_OVERVIEW));
 
         return CategoryEditVO.from(category, affectedCount);
     }
@@ -330,6 +367,8 @@ public class CategoryServiceImpl implements CategoryService {
 
         category.setStatus(newStatus);
         categoryMapper.updateById(category);
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_TREE));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_OVERVIEW));
 
         return new CategoryStatusVO(id, newStatus, affectedCount);
     }
@@ -355,6 +394,8 @@ public class CategoryServiceImpl implements CategoryService {
         // }
 
         categoryMapper.deleteById(id);
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_TREE));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_OVERVIEW));
     }
 
     @Override
@@ -396,11 +437,22 @@ public class CategoryServiceImpl implements CategoryService {
         }
 
         categoryMapper.deleteBatchIds(uniqueIds);
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_TREE));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_OVERVIEW));
         return new BatchDeleteVO(requestedCount, uniqueIds.size());
     }
 
     @Override
     public CategoryOverviewResult getOverview() {
+        try {
+            String cached = redisTemplate.opsForValue().get(OVERVIEW_CACHE_KEY);
+            if (cached != null) {
+                return objectMapper.readValue(cached, CategoryOverviewResult.class);
+            }
+        } catch (Exception e) {
+            log.warn("读取分类概览缓存失败", e);
+        }
+
         List<Category> allCategories = categoryMapper.selectList(Wrappers.emptyWrapper());
 
         long totalCategories = allCategories.size();
@@ -430,7 +482,16 @@ public class CategoryServiceImpl implements CategoryService {
                 .map(c -> new RecentUpdateItem(c.getId(), buildCategoryPath(c, categoryMap), c.getUpdatedAt()))
                 .toList();
 
-        return new CategoryOverviewResult(summary, topItems, recentUpdates);
+        CategoryOverviewResult result = new CategoryOverviewResult(summary, topItems, recentUpdates);
+
+        try {
+            String json = objectMapper.writeValueAsString(result);
+            redisTemplate.opsForValue().set(OVERVIEW_CACHE_KEY, json, CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("写入分类概览缓存失败", e);
+        }
+
+        return result;
     }
 
     private String buildCategoryPath(Category category, Map<Long, Category> categoryMap) {

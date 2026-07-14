@@ -3,21 +3,29 @@ package org.example.nursingtrainingbackend.common.result;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
+//test
 @Getter
 public enum ErrorCode {
     // ==================== 通用错误码 ====================
     SUCCESS(0, "success", HttpStatus.OK),
     BAD_REQUEST(400, "请求参数错误", HttpStatus.BAD_REQUEST),
     UNAUTHORIZED(401, "未登录或登录已过期", HttpStatus.UNAUTHORIZED),
-    FORBIDDEN(403, "无权访问", HttpStatus.FORBIDDEN),
+    FORBIDDEN(403, "当前用户不是学员或无访问权限", HttpStatus.FORBIDDEN),
     NOT_FOUND(404, "资源不存在", HttpStatus.NOT_FOUND),
     INTERNAL_ERROR(500, "服务器内部错误", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // ... existing code ...
+    RATE_LIMIT_EXCEEDED(429, "请求过于频繁，请稍后再试", HttpStatus.TOO_MANY_REQUESTS),
+// ... existing code ...
+
 
     // ==================== 认证模块 (1xxx) ====================
     USERNAME_OR_PASSWORD_ERROR(1001, "用户名或密码错误", HttpStatus.BAD_REQUEST),
     USER_DISABLED(1002, "账号已被禁用", HttpStatus.FORBIDDEN),
-    USER_NOT_FOUND(1003, "用户不存在", HttpStatus.NOT_FOUND),
-    USERNAME_EXISTS(1004, "用户名已存在", HttpStatus.BAD_REQUEST),
+    USERNAME_EXISTS(1003, "用户名已存在", HttpStatus.BAD_REQUEST),
+    INVALID_ROLE_TYPE(1004, "角色类型不合法", HttpStatus.BAD_REQUEST),
+    DEPT_NOT_EXISTS(1005, "部门不存在", HttpStatus.BAD_REQUEST),
+    USER_NOT_FOUND(1006, "用户不存在", HttpStatus.NOT_FOUND),
 
     // ==================== 文件上传模块 (2xxx) ====================
     FILE_EMPTY(2001, "上传文件不能为空", HttpStatus.BAD_REQUEST),
@@ -44,10 +52,6 @@ public enum ErrorCode {
     TAG_HAS_COURSES(3103, "标签已关联课程，不能删除", HttpStatus.CONFLICT),
     TAG_BATCH_OPERATION_FAILED(3104, "批量操作失败，操作已全部回滚", HttpStatus.INTERNAL_SERVER_ERROR),
 
-
-
-
-
     // ==================== 课程管理模块 (50xx) ====================
     COURSE_NOT_FOUND(5001, "课程不存在", HttpStatus.NOT_FOUND),
     COURSE_BASIC_INFO_INCOMPLETE(5002, "课程基础信息不完整", HttpStatus.BAD_REQUEST),
@@ -65,6 +69,8 @@ public enum ErrorCode {
     COURSE_STATUS_INVALID(5014, "当前课程状态不允许该操作", HttpStatus.CONFLICT),
     COURSE_COVER_URL_INVALID(5015, "课程封面 OSS 地址不合法", HttpStatus.BAD_REQUEST),
     COURSE_NOT_DRAFT(5016, "课程已发布，不能按草稿规则删除", HttpStatus.CONFLICT),
+    COURSE_EXPORT_CONDITION_INVALID(5017, "导出条件不合法", HttpStatus.BAD_REQUEST),
+    COURSE_EXCEL_GENERATE_FAILED(5018, "课程 Excel 生成失败", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // ==================== 文章管理模块 (41xx) ====================
     ARTICLE_NOT_FOUND(4101, "文章不存在", HttpStatus.NOT_FOUND),
@@ -78,19 +84,14 @@ public enum ErrorCode {
 
     // ==================== 视频管理模块 (40xx) ====================
     VIDEO_NOT_FOUND(4001, "视频不存在", HttpStatus.NOT_FOUND),
-    VIDEO_FILE_TYPE_NOT_SUPPORTED(4002, "视频文件类型不支持", HttpStatus.BAD_REQUEST),
-    VIDEO_FILE_SIZE_EXCEEDED(4003, "视频文件大小超过限制", HttpStatus.BAD_REQUEST),
-    VIDEO_VOD_CREDENTIAL_FAILED(4004, "获取VOD上传凭证失败", HttpStatus.INTERNAL_SERVER_ERROR),
-    VIDEO_CREDENTIAL_EXPIRED(4005, "上传凭证已过期，请刷新凭证", HttpStatus.BAD_REQUEST),
-    VIDEO_NOT_UPLOADED(4006, "视频尚未上传完成", HttpStatus.BAD_REQUEST),
-    VIDEO_TRANSCODE_NOT_SUCCESS(4007, "视频转码未成功，不能发布", HttpStatus.BAD_REQUEST),
-    VIDEO_TRANSCODE_RETRY_INVALID(4008, "当前转码状态不允许重试", HttpStatus.BAD_REQUEST),
-    VIDEO_PLAY_AUTH_FAILED(4009, "获取播放凭证失败", HttpStatus.INTERNAL_SERVER_ERROR),
-    VIDEO_VOD_DELETE_FAILED(4010, "删除阿里云VOD媒资失败", HttpStatus.INTERNAL_SERVER_ERROR),
-    VIDEO_CALLBACK_SIGNATURE_INVALID(4011, "VOD回调签名无效", HttpStatus.BAD_REQUEST),
-    VIDEO_STATUS_NO_CHANGE(4012, "视频业务状态无需重复修改", HttpStatus.BAD_REQUEST),
-    VIDEO_BATCH_DELETE_FAILED(4013, "批量删除失败，操作已全部回滚", HttpStatus.INTERNAL_SERVER_ERROR),
-    VIDEO_TRANSCODE_SUBMIT_FAILED(4014, "提交转码任务失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    VIDEO_MP4_ONLY(4002, "仅支持 MP4 视频", HttpStatus.BAD_REQUEST),
+    VIDEO_FILE_SIZE_EXCEEDED(4003, "视频文件超过大小限制", HttpStatus.BAD_REQUEST),
+    VIDEO_OSS_INVALID(4004, "OSS 视频地址、对象路径或文件信息不合法", HttpStatus.BAD_REQUEST),
+    VIDEO_STATUS_CONFLICT(4005, "当前视频状态不允许该操作", HttpStatus.CONFLICT),
+    VIDEO_OSS_UPLOAD_FAILED(4006, "OSS 上传凭证或播放地址生成失败", HttpStatus.BAD_GATEWAY),
+    VIDEO_IN_USE(4007, "视频已被课程点使用，不能删除", HttpStatus.CONFLICT),
+    VIDEO_BATCH_DELETE_FAILED(4008, "批量删除失败，操作未全部完成", HttpStatus.CONFLICT),
+    VIDEO_OSS_OBJECT_NOT_FOUND(4009, "OSS 视频对象不存在", HttpStatus.NOT_FOUND),
 
     // ==================== PPT 管理模块 (42xx) ====================
 
@@ -99,6 +100,30 @@ public enum ErrorCode {
     PPT_HAS_COURSE(4203, "PPT 已关联课程，不能删除", HttpStatus.CONFLICT),
     OSS_INVALID_URL(4204, "OSS 文件地址不合法", HttpStatus.BAD_REQUEST),
     OSS_FILE_NOT_FOUND(4205, "原始文件不存在", HttpStatus.NOT_FOUND),
+
+    // ==================== 学员端模块 (6xxx) ====================
+    LEARNER_NOT_FOUND(6001, "当前学员不存在或已停用", HttpStatus.NOT_FOUND),
+    LEARNER_DEPT_NOT_BINDIED(6002, "当前学员未绑定部门，无法计算可学习课程", HttpStatus.BAD_REQUEST),
+    LEARNER_HOME_QUERY_FAILED(6003, "首页数据查询失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    LEARNER_PAGE_PARAM_INVALID(6004, "分页参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_COURSE_NOT_VISIBLE(6005, "课程不存在或无权学习", HttpStatus.NOT_FOUND),
+    LEARNER_COURSE_NOT_PUBLISHED(6006, "课程未发布或已下架", HttpStatus.BAD_REQUEST),
+    LEARNER_POINT_NOT_FOUND(6007, "课程点不存在或已停用", HttpStatus.NOT_FOUND),
+    LEARNER_VIDEO_PROGRESS_INVALID(6008, "视频进度参数不合法", HttpStatus.BAD_REQUEST),
+
+    // ==================== 学习记录模块 (61xx) ====================
+    LEARNER_RECORD_INVALID_ID(6101, "学习记录ID格式不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_NOT_FOUND(6102, "学习记录不存在", HttpStatus.NOT_FOUND),
+    LEARNER_RECORD_ALREADY_COMPLETED(6103, "该课件已标记为完成", HttpStatus.CONFLICT),
+    LEARNER_RECORD_TYPE_NOT_SUPPORTED(6104, "该记录类型不支持此操作", HttpStatus.BAD_REQUEST),
+
+    // ==================== 学习记录参数校验模块 (64xx) ====================
+    LEARNER_RECORD_RANGE_INVALID(6401, "时间范围参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_TYPE_PARAM_INVALID(6402, "行为类型参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_RESOURCE_TYPE_INVALID(6403, "课件类型参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_PAGE_PARAM_INVALID(6404, "分页参数不合法", HttpStatus.BAD_REQUEST),
+    LEARNER_RECORD_QUERY_FAILED(6405, "学习记录查询失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    LEARNER_RECORD_STATS_FAILED(6406, "学习记录统计失败", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // ==================== 系统设置/学员管理模块 (71xx) ====================
     ADMIN_NOT_FOUND(7101, "当前管理员不存在或已停用", HttpStatus.NOT_FOUND),
@@ -113,8 +138,12 @@ public enum ErrorCode {
     STUDENT_DELETE_FAILED(7110, "学员删除失败", HttpStatus.INTERNAL_SERVER_ERROR),
     AVATAR_URL_OR_KEY_INVALID(7111, "头像地址或 OSS Key 不合法", HttpStatus.BAD_REQUEST),
     COURSE_NOT_AVAILABLE_FOR_STUDENT(7112, "课程不存在、未发布或该学员不可学习", HttpStatus.NOT_FOUND),
-    STUDENT_PROGRESS_UPDATE_FAILED(7113, "学员课程进度更新失败", HttpStatus.CONFLICT);
+    STUDENT_PROGRESS_UPDATE_FAILED(7113, "学员课程进度更新失败", HttpStatus.CONFLICT),
 
+    //管理端首页面板错误码
+    DASHBOARD_PANEL_INVALID_ID(7001, "面板ID格式不合法", HttpStatus.BAD_REQUEST),
+    DASHBOARD_PANEL_NOT_FOUND(7002, "面板统计失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    DASHBOARD_PANEL_QUERY_FAILED(7003, "面板查询失败", HttpStatus.INTERNAL_SERVER_ERROR);
     private final int code;
     private final String message;
     private final HttpStatus httpStatus;

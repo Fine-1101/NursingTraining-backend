@@ -10,6 +10,7 @@ import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.file.vo.FileUploadResponse;
 import org.example.nursingtrainingbackend.modules.file.vo.UploadPolicyResponse;
 import org.springframework.core.env.Environment;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -55,8 +56,18 @@ public class LocalFileServiceImpl implements FileService {
     }
 
     @Override
+    public FileUploadResponse upload(MultipartFile file, String directory, Authentication authentication) {
+        return null;
+    }
+
+    @Override
     public UploadPolicyResponse createPolicy(UploadPolicyRequest request) {
         throw new BusinessException(ErrorCode.BAD_REQUEST, "本地存储不支持客户端直传（Policy），请使用服务端上传");
+    }
+
+    @Override
+    public void markFileUsed(String objectKey, String bizType, Long bizId) {
+
     }
 
     private void validate(long size, String contentType, boolean empty) {

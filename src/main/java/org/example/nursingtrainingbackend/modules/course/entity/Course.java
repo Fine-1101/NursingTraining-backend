@@ -35,6 +35,7 @@ public class Course {
 
     private Long createdBy;
 
+
     private LocalDateTime publishedAt;
 
     private LocalDateTime createdAt;

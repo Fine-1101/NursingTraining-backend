@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Size;
 public record UploadPolicyRequest(
         @NotBlank(message = "文件名不能为空")
         @Size(max = 255, message = "文件名不能超过255个字符")
-        @Pattern(regexp = ".*\\.(ppt|pptx)$", message = "仅支持 .ppt 和 .pptx 文件")
         String fileName,
 
         @NotBlank(message = "Content-Type不能为空")
@@ -17,11 +16,4 @@ public record UploadPolicyRequest(
         @NotBlank(message = "目录不能为空")
         @Pattern(regexp = "^[a-zA-Z0-9/_-]{1,64}$", message = "目录格式不合法")
         String directory
-) {
-    // 紧凑构造器：处理默认值
-    public UploadPolicyRequest {
-        if (directory == null || directory.isBlank()) {
-            directory = "files";
-        }
-    }
-}
+) {}

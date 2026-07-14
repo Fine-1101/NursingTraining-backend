@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.nursingtrainingbackend.modules.dashboard.mapper.DashboardMapper">
+
+    <!-- 统计未删除课程总数 -->
+    <select id="countCourses" resultType="int">
+        SELECT COUNT(*) FROM course WHERE deleted_at IS NULL
+    </select>
+
+    <!-- 统计学员总数（role_type=1, 未删除） -->
+    <select id="countLearners" resultType="int">
+        SELECT COUNT(*) FROM user WHERE role_type = 1 AND deleted_at IS NULL
+    </select>
+
+    <!--
+        按状态统计学员学习进度分布
+        统计所有学员（role_type=1）在 user_course_progress 中的状态分布
+        没有进度记录的学员算作 NOT_STARTED
+    -->
+    <select id="countProgressByStatus" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.StatusCountRow">
+        SELECT
+            ucp.status AS status,
+            COUNT(DISTINCT ucp.user_id) AS cnt
+        FROM user_course_progress ucp
+        INNER JOIN user u ON u.id = ucp.user_id AND u.role_type = 1 AND u.deleted_at IS NULL
+        GROUP BY ucp.status
+    </select>
+
+    <!-- 按月份统计学习趋势 -->
+    <select id="selectMonthlyLearningTrend" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.TrendRow">
+        SELECT
+            DATE_FORMAT(periods.month_start, '%Y-%m') AS period,
+            DATE_FORMAT(periods.month_start, '%c月') AS label,
+            (SELECT COUNT(DISTINCT ucp.user_id)
+             FROM user_course_progress ucp
+             WHERE ucp.updated_at &gt;= periods.month_start
+               AND ucp.updated_at &lt; periods.month_end
+            ) AS learnerCount,
+            (SELECT COUNT(*)
+             FROM user_course_progress ucp
+             WHERE ucp.status = 2
+               AND ucp.completed_at &gt;= periods.month_start
+               AND ucp.completed_at &lt; periods.month_end
+            ) AS completedCourseCount
+        FROM (
+            SELECT
+                DATE_FORMAT(DATE_ADD(#{startDate}, INTERVAL seq MONTH), '%Y-%m-01') AS month_start,
+                DATE_FORMAT(DATE_ADD(DATE_ADD(#{startDate}, INTERVAL seq MONTH), INTERVAL 1 MONTH), '%Y-%m-01') AS month_end
+            FROM (
+                SELECT 0 AS seq UNION SELECT 1 UNION SELECT 2 UNION SELECT 3
+                UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7
+                UNION SELECT 8 UNION SELECT 9 UNION SELECT 10 UNION SELECT 11
+            ) seq_tbl
+            WHERE DATE_ADD(#{startDate}, INTERVAL seq MONTH) &lt;= #{endDate}
+        ) periods
+        ORDER BY periods.month_start
+    </select>
+
+    <!-- 按周统计学习趋势 -->
+    <select id="selectWeeklyLearningTrend" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.TrendRow">
+        SELECT
+            periods.week_start AS period,
+            CONCAT('第', periods.week_index, '周') AS label,
+            (SELECT COUNT(DISTINCT ucp.user_id)
+             FROM user_course_progress ucp
+             WHERE ucp.updated_at &gt;= periods.week_start
+               AND ucp.updated_at &lt; periods.week_end
+            ) AS learnerCount,
+            (SELECT COUNT(*)
+             FROM user_course_progress ucp
+             WHERE ucp.status = 2
+               AND ucp.completed_at &gt;= periods.week_start
+               AND ucp.completed_at &lt; periods.week_end
+            ) AS completedCourseCount
+        FROM (
+            SELECT
+                DATE_FORMAT(DATE_ADD(#{startDate}, INTERVAL seq * 7 DAY), '%Y-%m-%d') AS week_start,
+                DATE_FORMAT(DATE_ADD(#{startDate}, INTERVAL (seq + 1) * 7 DAY), '%Y-%m-%d') AS week_end,
+                seq + 1 AS week_index
+            FROM (
+                SELECT 0 AS seq UNION SELECT 1 UNION SELECT 2 UNION SELECT 3
+                UNION SELECT 4 UNION SELECT 5 UNION SELECT 6 UNION SELECT 7
+                UNION SELECT 8 UNION SELECT 9 UNION SELECT 10 UNION SELECT 11
+                UNION SELECT 12 UNION SELECT 13 UNION SELECT 14 UNION SELECT 15
+                UNION SELECT 16 UNION SELECT 17 UNION SELECT 18 UNION SELECT 19
+                UNION SELECT 20 UNION SELECT 21 UNION SELECT 22 UNION SELECT 23
+                UNION SELECT 24 UNION SELECT 25
+            ) seq_tbl
+            WHERE DATE_ADD(#{startDate}, INTERVAL seq * 7 DAY) &lt;= #{endDate}
+        ) periods
+        ORDER BY periods.week_start
+    </select>
+
+    <!-- 查询某门课程按月的学习人数与完成率趋势 -->
+    <select id="selectCourseMonthlyTrend" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.CourseTrendRow">
+        SELECT
+            DATE_FORMAT(periods.month_start, '%c月') AS label,
+            (SELECT COUNT(DISTINCT ucp.user_id)
+             FROM user_course_progress ucp
+             WHERE ucp.course_id = #{courseId}
+               AND ucp.created_at &lt; periods.month_end
+            ) AS learnerCount,
+            (SELECT
+                CASE
+                    WHEN (SELECT COUNT(DISTINCT ucp2.user_id)
+                          FROM user_course_progress ucp2
+                          WHERE ucp2.course_id = #{courseId}
+                            AND ucp2.created_at &lt; periods.month_end) = 0 THEN 0
+                    ELSE ROUND(
+                        (SELECT COUNT(DISTINCT ucp3.user_id)
+                         FROM user_course_progress ucp3
+                         WHERE ucp3.course_id = #{courseId}
+                           AND ucp3.status = 2
+                           AND ucp3.completed_at &lt; periods.month_end) * 100.0
+                        /
+                        (SELECT COUNT(DISTINCT ucp4.user_id)
+                         FROM user_course_progress ucp4
+                         WHERE ucp4.course_id = #{courseId}
+                           AND ucp4.created_at &lt; periods.month_end)
+                    , 1)
+                END
+            ) AS completionRate
+        FROM (
+            SELECT
+                DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL seq MONTH), '%Y-%m-01') AS month_start,
+                DATE_FORMAT(DATE_ADD(DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL seq MONTH), '%Y-%m-01'), INTERVAL 1 MONTH), '%Y-%m-01') AS month_end
+            FROM (
+                SELECT 5 AS seq UNION SELECT 4 UNION SELECT 3 UNION SELECT 2 UNION SELECT 1 UNION SELECT 0
+            ) seq_tbl
+        ) periods
+        ORDER BY periods.month_start
+    </select>
+
+    <!-- 按开始学习时间聚合；周粒度以 startDate 为滚动周起点。 -->
+    <select id="selectCourseTrendByRange" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.CourseTrendRow">
+        SELECT
+            CASE
+                WHEN #{granularity} = 'DAY' THEN
+                    DATE_FORMAT(COALESCE(ucp.started_at, ucp.created_at), '%Y-%m-%d')
+                WHEN #{granularity} = 'WEEK' THEN
+                    DATE_FORMAT(
+                        DATE_SUB(
+                            DATE(COALESCE(ucp.started_at, ucp.created_at)),
+                            INTERVAL MOD(
+                                DATEDIFF(DATE(COALESCE(ucp.started_at, ucp.created_at)), #{startDate}), 7
+                            ) DAY
+                        ),
+                        '%Y-%m-%d'
+                    )
+                ELSE DATE_FORMAT(COALESCE(ucp.started_at, ucp.created_at), '%Y-%m-01')
+            END AS periodStart,
+            COUNT(DISTINCT ucp.user_id) AS learnerCount,
+            COUNT(DISTINCT CASE WHEN ucp.status = 2 THEN ucp.user_id END) AS completedLearnerCount
+        FROM user_course_progress ucp
+        WHERE ucp.course_id = #{courseId}
+          AND COALESCE(ucp.started_at, ucp.created_at) &gt;= #{startDate}
+          AND COALESCE(ucp.started_at, ucp.created_at) &lt; #{endDate}
+        GROUP BY periodStart
+        ORDER BY periodStart
+    </select>
+
+    <!-- 科室完成率排行 -->
+    <select id="selectDepartmentRanking" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.DepartmentRankRow">
+        SELECT
+            d.id AS departmentId,
+            d.name AS departmentName,
+            COUNT(DISTINCT ucp.user_id) AS learnerCount,
+            COUNT(DISTINCT CASE WHEN ucp.status = 2 THEN ucp.user_id END) AS completedLearnerCount,
+            CASE
+                WHEN COUNT(DISTINCT ucp.user_id) = 0 THEN 0
+                ELSE ROUND(
+                    COUNT(DISTINCT CASE WHEN ucp.status = 2 THEN ucp.user_id END) * 100.0
+                    / COUNT(DISTINCT ucp.user_id), 1)
+            END AS completionRate
+        FROM department d
+        LEFT JOIN user u ON u.dept_id = d.id AND u.role_type = 1 AND u.deleted_at IS NULL
+        LEFT JOIN user_course_progress ucp ON ucp.user_id = u.id
+        GROUP BY d.id, d.name
+        HAVING COUNT(DISTINCT ucp.user_id) > 0
+        ORDER BY completionRate DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 查询某日期的课程快照总数 -->
+    <select id="selectLastMonthEndCourseSnapshot" resultType="java.lang.Integer">
+        SELECT total_courses
+        FROM course_stat_snapshot
+        WHERE stat_date &lt;= #{statDate}
+        ORDER BY stat_date DESC
+        LIMIT 1
+    </select>
+
+    <!-- 查询某日期之前注册的学员数 -->
+    <select id="selectLearnerCountBefore" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM user
+        WHERE role_type = 1
+          AND deleted_at IS NULL
+          AND created_at &lt; #{beforeDate}
+    </select>
+
+</mapper>

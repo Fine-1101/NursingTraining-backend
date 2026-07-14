@@ -14,7 +14,7 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 /**
  * 文件存储配置 — 根据 OSS 是否启用选择实现
  */
-@Configuration
+@Configuration(proxyBeanMethods = false)
 public class FileStorageConfig {
 
     /**

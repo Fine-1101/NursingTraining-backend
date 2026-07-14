@@ -1,18 +1,16 @@
 package org.example.nursingtrainingbackend.modules.course.service;
 
-import org.example.nursingtrainingbackend.modules.course.dto.CompletionRuleDTO;
+import org.example.nursingtrainingbackend.modules.course.dto.CourseStatusDTO;
 import org.example.nursingtrainingbackend.modules.course.dto.CreateCourseInitial;
-import org.example.nursingtrainingbackend.modules.course.dto.UpdateCourseStatusDTO;
-import org.example.nursingtrainingbackend.modules.course.vo.CompletionRuleVO;
+import org.example.nursingtrainingbackend.modules.course.vo.CourseStatusVO;
 import org.example.nursingtrainingbackend.modules.course.vo.CourseUpdateBasicVO;
 
 public interface CourseUpdateService {
 
     CourseUpdateBasicVO updateCourseBasic(Long courseId, CreateCourseInitial dto);
 
-    CompletionRuleVO saveCompletionRule(Long courseId, CompletionRuleDTO dto);
+    Void NewCourse(Long courseId);
 
-    void updateCourseStatus(Long courseId, UpdateCourseStatusDTO dto);
+    CourseStatusVO updateCourseStatus(Long courseId, CourseStatusDTO dto);
 
-    void deleteCourseDraft(Long courseId);
 }

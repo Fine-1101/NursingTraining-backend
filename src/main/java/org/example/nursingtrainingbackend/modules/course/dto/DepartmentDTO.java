@@ -1,25 +1,11 @@
 package org.example.nursingtrainingbackend.modules.course.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
 public class DepartmentDTO {
+    @NotNull(message = "部门ID不能为空")
     private Long departmentId;
     private Boolean required;
-
-    public Long getDepartmentId() {
-        return departmentId;
-    }
-
-    public void setDepartmentId(Long departmentId) {
-        this.departmentId = departmentId;
-    }
-
-    public Boolean getRequired() {
-        return required;
-    }
-
-    public void setRequired(Boolean required) {
-        this.required = required;
-    }
 }
