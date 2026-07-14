@@ -143,7 +143,19 @@ public enum ErrorCode {
     //管理端首页面板错误码
     DASHBOARD_PANEL_INVALID_ID(7001, "面板ID格式不合法", HttpStatus.BAD_REQUEST),
     DASHBOARD_PANEL_NOT_FOUND(7002, "面板统计失败", HttpStatus.INTERNAL_SERVER_ERROR),
-    DASHBOARD_PANEL_QUERY_FAILED(7003, "面板查询失败", HttpStatus.INTERNAL_SERVER_ERROR);
+    DASHBOARD_PANEL_QUERY_FAILED(7003, "面板查询失败", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // ==================== 考核模块 (80xx) ====================
+    QUESTION_NOT_FOUND(8001, "题目不存在", HttpStatus.NOT_FOUND),
+    QUESTION_TYPE_NOT_SUPPORTED(8002, "题型不支持", HttpStatus.BAD_REQUEST),
+    QUESTION_OPTION_INVALID(8003, "选项或正确答案不合法", HttpStatus.BAD_REQUEST),
+    QUESTION_COURSE_CATEGORY_MISMATCH(8004, "指定课程与题目类别不一致", HttpStatus.BAD_REQUEST),
+    ASSESSMENT_NOT_FOUND(8010, "考核不存在", HttpStatus.NOT_FOUND),
+    ASSESSMENT_STATUS_CONFLICT(8011, "考核状态不允许当前操作", HttpStatus.CONFLICT),
+    ASSESSMENT_DRAW_RULE_INVALID(8012, "抽题规则不合法", HttpStatus.BAD_REQUEST),
+    ASSESSMENT_QUESTION_INSUFFICIENT(8013, "可用题量不足", HttpStatus.CONFLICT),
+    ASSESSMENT_SCORE_INVALID(8014, "总分或及格分不合法", HttpStatus.BAD_REQUEST),
+    ASSESSMENT_TIME_INVALID(8015, "考核时间设置不合法", HttpStatus.BAD_REQUEST);
     private final int code;
     private final String message;
     private final HttpStatus httpStatus;
