@@ -106,7 +106,7 @@ public enum ErrorCode {
     LEARNER_DEPT_NOT_BINDIED(6002, "当前学员未绑定部门，无法计算可学习课程", HttpStatus.BAD_REQUEST),
     LEARNER_HOME_QUERY_FAILED(6003, "首页数据查询失败", HttpStatus.INTERNAL_SERVER_ERROR),
     LEARNER_PAGE_PARAM_INVALID(6004, "分页参数不合法", HttpStatus.BAD_REQUEST),
-    LEARNER_COURSE_NOT_VISIBLE(6005, "课程不存在或无权学习", HttpStatus.NOT_FOUND),
+    LEARNER_COURSE_NOT_VISIBLE(6005, "无权访问课程", HttpStatus.NOT_FOUND),
     LEARNER_COURSE_NOT_PUBLISHED(6006, "课程未发布或已下架", HttpStatus.BAD_REQUEST),
     LEARNER_POINT_NOT_FOUND(6007, "课程点不存在或已停用", HttpStatus.NOT_FOUND),
     LEARNER_VIDEO_PROGRESS_INVALID(6008, "视频进度参数不合法", HttpStatus.BAD_REQUEST),
@@ -155,7 +155,38 @@ public enum ErrorCode {
     ASSESSMENT_DRAW_RULE_INVALID(8012, "抽题规则不合法", HttpStatus.BAD_REQUEST),
     ASSESSMENT_QUESTION_INSUFFICIENT(8013, "可用题量不足", HttpStatus.CONFLICT),
     ASSESSMENT_SCORE_INVALID(8014, "总分或及格分不合法", HttpStatus.BAD_REQUEST),
-    ASSESSMENT_TIME_INVALID(8015, "考核时间设置不合法", HttpStatus.BAD_REQUEST);
+    ASSESSMENT_TIME_INVALID(8015, "考核时间设置不合法", HttpStatus.BAD_REQUEST),
+    ASSESSMENT_FORBIDDEN(8020, "无权参加考核", HttpStatus.FORBIDDEN),
+    ASSESSMENT_NOT_STARTED(8021, "尚未到开考时间", HttpStatus.CONFLICT),
+    ASSESSMENT_CLOSED(8022, "考核已关闭", HttpStatus.CONFLICT),
+    ASSESSMENT_ATTEMPTS_EXHAUSTED(8023, "次数已用完", HttpStatus.CONFLICT),
+    ASSESSMENT_ATTEMPT_NOT_FOUND(8024, "考试记录不存在", HttpStatus.NOT_FOUND),
+    ASSESSMENT_ATTEMPT_NOT_OWNER(8025, "记录不属于当前学员", HttpStatus.FORBIDDEN),
+    ASSESSMENT_ALREADY_SUBMITTED(8026, "已经交卷", HttpStatus.CONFLICT),
+    ASSESSMENT_OPTION_MISMATCH(8027, "选项不属于当前题目", HttpStatus.BAD_REQUEST),
+    ASSESSMENT_AUTO_SUBMITTED(8028, "已超时并自动交卷", HttpStatus.CONFLICT),
+    ASSESSMENT_DRAW_FAILED(8029, "随机组卷失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    ASSESSMENT_GRADE_FAILED(8030, "自动判卷失败", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    LEARNING_REPORT_NOT_FOUND(
+        6501, "学习报告不存在", HttpStatus.NOT_FOUND),
+    LEARNING_REPORT_TYPE_INVALID(
+        6502, "学习报告类型不合法", HttpStatus.BAD_REQUEST),
+    LEARNING_REPORT_PERIOD_INVALID(
+        6503, "报告统计周期不合法", HttpStatus.BAD_REQUEST),
+    LEARNING_REPORT_GENERATING(
+        6504, "相同周期报告正在生成", HttpStatus.CONFLICT),
+    LEARNING_REPORT_RATE_LIMITED(
+        6505, "报告生成次数超过限制", HttpStatus.TOO_MANY_REQUESTS),
+    LEARNING_REPORT_DATA_UNCHANGED(
+        6506, "学习数据未变化，无需重新生成", HttpStatus.CONFLICT),
+    AI_PROVIDER_UNAVAILABLE(
+        6509, "AI服务暂不可用", HttpStatus.SERVICE_UNAVAILABLE),
+    AI_PROVIDER_TIMEOUT(
+        6510, "AI报告生成超时", HttpStatus.GATEWAY_TIMEOUT),
+    AI_RESPONSE_INVALID(
+        6511, "AI报告格式校验失败", HttpStatus.INTERNAL_SERVER_ERROR);
+
     private final int code;
     private final String message;
     private final HttpStatus httpStatus;

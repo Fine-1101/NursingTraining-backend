@@ -1,0 +1,234 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeneratedLearningReport",
+  "description": "AI 生成的个性化学习报告结构",
+  "type": "object",
+  "required": [
+    "title",
+    "summary",
+    "performanceLevel",
+    "overview",
+    "highlights",
+    "strengths",
+    "weaknesses",
+    "studyPlan",
+    "encouragement",
+    "disclaimer"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "报告标题"
+    },
+    "summary": {
+      "type": "string",
+      "description": "报告总结"
+    },
+    "performanceLevel": {
+      "type": "string",
+      "description": "综合表现等级，如 BEGINNER、DEVELOPING、PROFICIENT、EXCELLENT",
+      "enum": ["BEGINNER", "DEVELOPING", "PROFICIENT", "EXCELLENT"]
+    },
+    "overview": {
+      "type": "object",
+      "description": "学习概览",
+      "required": ["activeDays", "studyMinutes", "completedPoints", "assessmentCount"],
+      "properties": {
+        "activeDays": {
+          "type": "integer",
+          "description": "实际产生学习记录的天数"
+        },
+        "studyMinutes": {
+          "type": "integer",
+          "description": "累计学习分钟数"
+        },
+        "completedPoints": {
+          "type": "integer",
+          "description": "完成的知识点数量"
+        },
+        "assessmentCount": {
+          "type": "integer",
+          "description": "参与考核的次数"
+        },
+        "averageScore": {
+          "type": ["number", "null"],
+          "description": "考核平均成绩，无考核数据时为 null"
+        }
+      }
+    },
+    "highlights": {
+      "type": "array",
+      "description": "报告亮点",
+      "items": {
+        "type": "object",
+        "required": ["type", "title", "description"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "亮点类型，如 STREAK、HIGH_SCORE、FAST_PROGRESS"
+          },
+          "title": {
+            "type": "string",
+            "description": "亮点标题"
+          },
+          "description": {
+            "type": "string",
+            "description": "亮点描述"
+          },
+          "evidence": {
+            "type": "array",
+            "description": "支撑该亮点的事实数据",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "description": "优势知识点",
+      "items": {
+        "type": "object",
+        "required": ["knowledgePointId", "name", "masteryScore", "confidence", "status", "analysis"],
+        "properties": {
+          "knowledgePointId": {
+            "type": "integer",
+            "description": "知识点ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "知识点名称"
+          },
+          "masteryScore": {
+            "type": "number",
+            "description": "掌握度，范围0～100"
+          },
+          "confidence": {
+            "type": "string",
+            "description": "结论可信度：LOW、MEDIUM、HIGH",
+            "enum": ["LOW", "MEDIUM", "HIGH"]
+          },
+          "status": {
+            "type": "string",
+            "description": "当前状态，如 MASTERED、OBSERVING"
+          },
+          "analysis": {
+            "type": "string",
+            "description": "分析说明"
+          },
+          "evidence": {
+            "type": "array",
+            "description": "支撑该结论的事实证据",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "weaknesses": {
+      "type": "array",
+      "description": "薄弱知识点",
+      "items": {
+        "type": "object",
+        "required": ["knowledgePointId", "name", "masteryScore", "confidence", "status", "analysis"],
+        "properties": {
+          "knowledgePointId": {
+            "type": "integer",
+            "description": "知识点ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "知识点名称"
+          },
+          "masteryScore": {
+            "type": "number",
+            "description": "掌握度，范围0～100"
+          },
+          "confidence": {
+            "type": "string",
+            "description": "结论可信度：LOW、MEDIUM、HIGH",
+            "enum": ["LOW", "MEDIUM", "HIGH"]
+          },
+          "status": {
+            "type": "string",
+            "description": "当前状态，如 WEAK、OBSERVING"
+          },
+          "analysis": {
+            "type": "string",
+            "description": "分析说明"
+          },
+          "evidence": {
+            "type": "array",
+            "description": "支撑该结论的事实证据",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "studyPlan": {
+      "type": "array",
+      "description": "学习计划",
+      "items": {
+        "type": "object",
+        "required": ["sequence", "title", "action", "estimatedMinutes", "reason", "navigation"],
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "description": "计划序号，从1开始"
+          },
+          "title": {
+            "type": "string",
+            "description": "计划标题"
+          },
+          "action": {
+            "type": "string",
+            "description": "具体行动描述"
+          },
+          "estimatedMinutes": {
+            "type": "integer",
+            "description": "预计学习分钟数"
+          },
+          "reason": {
+            "type": "string",
+            "description": "推荐理由"
+          },
+          "navigation": {
+            "type": "object",
+            "description": "前端跳转信息",
+            "required": ["actionType"],
+            "properties": {
+              "actionType": {
+                "type": "string",
+                "description": "跳转类型，如 COURSE_POINT、CHAPTER"
+              },
+              "courseId": {
+                "type": ["integer", "null"],
+                "description": "课程ID"
+              },
+              "chapterId": {
+                "type": ["integer", "null"],
+                "description": "章节ID"
+              },
+              "pointId": {
+                "type": ["integer", "null"],
+                "description": "知识点ID"
+              }
+            }
+          }
+        }
+      }
+    },
+    "encouragement": {
+      "type": "string",
+      "description": "鼓励语"
+    },
+    "disclaimer": {
+      "type": "string",
+      "description": "免责声明"
+    }
+  }
+}

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.example.nursingtrainingbackend.modules.learningreport.mapper.LearningSnapshotMapper">
+
+    <select id="selectLearningOverview"
+            resultType="org.example.nursingtrainingbackend.modules.learningreport.dto.LearningOverviewRow">
+
+        SELECT
+        (
+        SELECT COUNT(*)
+        FROM user_learning_record ulr
+        WHERE ulr.user_id = #{userId}
+        AND ulr.created_at &gt;= #{start}
+        AND ulr.created_at &lt;= #{end}
+        ) AS validLearningEventCount,
+
+        (
+        SELECT COUNT(DISTINCT DATE(ulr.created_at))
+        FROM user_learning_record ulr
+        WHERE ulr.user_id = #{userId}
+        AND ulr.created_at &gt;= #{start}
+        AND ulr.created_at &lt;= #{end}
+        ) AS activeDays,
+
+        (
+        SELECT COALESCE(
+        ROUND(
+        SUM(
+        COALESCE(ucrp.max_position_seconds, 0)
+        ) / 60
+        ),
+        0
+        )
+        FROM user_course_resource_progress ucrp
+        WHERE ucrp.user_id = #{userId}
+        AND ucrp.updated_at &gt; #{start}
+        AND ucrp.updated_at &lt;= #{end}
+        ) AS studyMinutes,
+
+        (
+        SELECT COUNT(*)
+        FROM user_course_point_progress ucpp
+        WHERE ucpp.user_id = #{userId}
+        AND ucpp.status = 2
+        AND ucpp.completed_at &gt; #{start}
+        AND ucpp.completed_at &lt;= #{end}
+        ) AS completedPoints,
+
+        (
+        SELECT COUNT(*)
+        FROM assessment_attempt aa
+        WHERE aa.user_id = #{userId}
+        AND aa.status = 2
+        AND aa.submitted_at &gt; #{start}
+        AND aa.submitted_at &lt;= #{end}
+        ) AS assessmentCount,
+
+        (
+        SELECT COUNT(*)
+        FROM assessment_answer answer_record
+        INNER JOIN assessment_attempt attempt_record
+        ON attempt_record.id = answer_record.attempt_id
+        WHERE attempt_record.user_id = #{userId}
+        AND attempt_record.status = 2
+        AND answer_record.answered_at &gt; #{start}
+        AND answer_record.answered_at &lt;= #{end}
+        ) AS answeredQuestionCount,
+
+        (
+        SELECT ROUND(AVG(aa.score), 2)
+        FROM assessment_attempt aa
+        WHERE aa.user_id = #{userId}
+        AND aa.status = 2
+        AND aa.submitted_at &gt; #{start}
+        AND aa.submitted_at &lt;= #{end}
+        AND aa.score IS NOT NULL
+        ) AS averageScore
+
+    </select>
+
+</mapper>
