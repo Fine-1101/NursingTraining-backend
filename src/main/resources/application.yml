@@ -49,3 +49,4 @@ app:
     access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
     region-id: ${VOD_REGION_ID:cn-shanghai}
     transcode-template-group-id: ${VOD_TRANSCODE_TEMPLATE_GROUP_ID:}
+
