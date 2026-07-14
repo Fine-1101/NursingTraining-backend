@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.example.nursingtrainingbackend.modules.assessment.mapper.AssessmentAttemptMapper">
+
+    <!-- API-16: 成绩列表分页 -->
+    <select id="selectResultPage"
+            resultType="org.example.nursingtrainingbackend.modules.assessment.vo.ResultItemVO">
+        SELECT
+            aa.id AS attemptId,
+            a.id AS assessmentId,
+            a.title AS assessmentTitle,
+            a.course_id AS courseId,
+            c.title AS courseTitle,
+            u.id AS userId,
+            u.username,
+            u.real_name AS realName,
+            u.dept_id AS departmentId,
+            d.name AS departmentName,
+            aa.attempt_no AS attemptNo,
+            aa.score,
+            a.total_score AS totalScore,
+            a.pass_score AS passScore,
+            CASE WHEN aa.passed = 1 THEN true ELSE false END AS passed,
+            aa.status,
+            aa.started_at AS startedAt,
+            aa.submitted_at AS submittedAt,
+            CASE
+                WHEN aa.submitted_at IS NOT NULL AND aa.started_at IS NOT NULL
+                THEN TIMESTAMPDIFF(SECOND, aa.started_at, aa.submitted_at)
+                ELSE NULL
+            END AS durationSeconds
+        FROM assessment_attempt aa
+        JOIN assessment a ON a.id = aa.assessment_id AND a.deleted_at IS NULL
+        LEFT JOIN course c ON c.id = a.course_id AND c.deleted_at IS NULL
+        LEFT JOIN user u ON u.id = aa.user_id AND u.deleted_at IS NULL
+        LEFT JOIN department d ON d.id = u.dept_id
+        WHERE 1=1
+        <if test="assessmentId != null">
+            AND a.id = #{assessmentId}
+        </if>
+        <if test="courseId != null">
+            AND a.course_id = #{courseId}
+        </if>
+        <if test="categoryId != null">
+            AND a.category_id = #{categoryId}
+        </if>
+        <if test="departmentId != null">
+            AND u.dept_id = #{departmentId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (u.real_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.username LIKE CONCAT('%', #{keyword}, '%')
+                 OR a.title LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="passed != null and passed == true">
+            AND aa.passed = 1
+        </if>
+        <if test="passed != null and passed == false">
+            AND aa.passed = 0
+        </if>
+        <if test="submittedFrom != null">
+            AND aa.submitted_at &gt;= #{submittedFrom}
+        </if>
+        <if test="submittedTo != null">
+            AND aa.submitted_at &lt;= #{submittedTo}
+        </if>
+        ORDER BY aa.submitted_at DESC, aa.id DESC
+    </select>
+
+    <!-- API-17: 单次成绩详情基本信息 -->
+    <select id="selectResultDetail"
+            resultType="org.example.nursingtrainingbackend.modules.assessment.vo.ResultDetailVO">
+        SELECT
+            aa.id AS attemptId,
+            a.id AS assessmentId,
+            a.title AS assessmentTitle,
+            a.course_id AS courseId,
+            c.title AS courseTitle,
+            aa.score,
+            a.total_score AS totalScore,
+            a.pass_score AS passScore,
+            CASE WHEN aa.passed = 1 THEN true ELSE false END AS passed
+        FROM assessment_attempt aa
+        JOIN assessment a ON a.id = aa.assessment_id
+        LEFT JOIN course c ON c.id = a.course_id
+        WHERE aa.id = #{attemptId}
+    </select>
+
+    <!-- API-18: 考核成绩概览 -->
+    <select id="selectResultSummary"
+            resultType="org.example.nursingtrainingbackend.modules.assessment.vo.ResultSummaryVO">
+        SELECT
+            #{assessmentId} AS assessmentId,
+            COUNT(*) AS participantCount,
+            SUM(CASE WHEN aa.status = 2 THEN 1 ELSE 0 END) AS submittedCount,
+            SUM(CASE WHEN aa.passed = 1 AND aa.status = 2 THEN 1 ELSE 0 END) AS passedCount,
+            SUM(CASE WHEN aa.passed = 0 AND aa.status = 2 THEN 1 ELSE 0 END) AS failedCount,
+            ROUND(COALESCE(AVG(CASE WHEN aa.status = 2 THEN aa.score END), 0), 2) AS averageScore,
+            COALESCE(MAX(CASE WHEN aa.status = 2 THEN aa.score END), 0) AS highestScore,
+            COALESCE(MIN(CASE WHEN aa.status = 2 THEN aa.score END), 0) AS lowestScore
+        FROM assessment_attempt aa
+        WHERE aa.assessment_id = #{assessmentId}
+    </select>
+
+    <!-- 可参加考核的学员数 -->
+    <select id="countEligibleLearners" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT u.id)
+        FROM user u
+        WHERE u.role_type = 1
+          AND u.status = 1
+          AND u.deleted_at IS NULL
+          AND (
+              NOT EXISTS (SELECT 1 FROM assessment_question_course aqc
+                          JOIN assessment_question aq ON aq.id = aqc.question_id
+                          JOIN assessment a ON a.category_id = #{categoryId}
+                          WHERE a.course_id = #{courseId}
+                            AND aq.category_id = #{categoryId}
+                            AND aq.status = 1
+                            AND aq.deleted_at IS NULL)
+              OR
+              u.dept_id IN (
+                  SELECT cd.department_id FROM course_department cd WHERE cd.course_id = #{courseId}
+              )
+          )
+    </select>
+
+    <!-- API-19: 导出成绩 -->
+    <select id="selectResultExport"
+            resultType="org.example.nursingtrainingbackend.modules.assessment.vo.ResultExportRowVO">
+        SELECT
+            u.username,
+            u.real_name AS realName,
+            d.name AS departmentName,
+            a.title AS assessmentTitle,
+            c.title AS courseTitle,
+            aa.attempt_no AS attemptNo,
+            aa.score,
+            a.total_score AS totalScore,
+            a.pass_score AS passScore,
+            CASE WHEN aa.passed = 1 THEN '通过' ELSE '未通过' END AS passedText,
+            aa.started_at AS startedAt,
+            aa.submitted_at AS submittedAt,
+            CASE
+                WHEN aa.submitted_at IS NOT NULL AND aa.started_at IS NOT NULL
+                THEN TIMESTAMPDIFF(SECOND, aa.started_at, aa.submitted_at)
+                ELSE NULL
+            END AS durationSeconds
+        FROM assessment_attempt aa
+        JOIN assessment a ON a.id = aa.assessment_id AND a.deleted_at IS NULL
+        LEFT JOIN course c ON c.id = a.course_id AND c.deleted_at IS NULL
+        LEFT JOIN user u ON u.id = aa.user_id AND u.deleted_at IS NULL
+        LEFT JOIN department d ON d.id = u.dept_id
+        WHERE 1=1
+        <if test="assessmentId != null">
+            AND a.id = #{assessmentId}
+        </if>
+        <if test="courseId != null">
+            AND a.course_id = #{courseId}
+        </if>
+        <if test="categoryId != null">
+            AND a.category_id = #{categoryId}
+        </if>
+        <if test="departmentId != null">
+            AND u.dept_id = #{departmentId}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (u.real_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.username LIKE CONCAT('%', #{keyword}, '%')
+                 OR a.title LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="passed != null and passed == true">
+            AND aa.passed = 1
+        </if>
+        <if test="passed != null and passed == false">
+            AND aa.passed = 0
+        </if>
+        <if test="submittedFrom != null">
+            AND aa.submitted_at &gt;= #{submittedFrom}
+        </if>
+        <if test="submittedTo != null">
+            AND aa.submitted_at &lt;= #{submittedTo}
+        </if>
+        ORDER BY aa.submitted_at DESC, aa.id DESC
+    </select>
+
+</mapper>
