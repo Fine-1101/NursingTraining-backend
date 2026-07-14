@@ -17,7 +17,8 @@ public record CategoryVO(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static CategoryVO from(Category category, String parentName) {
+    public static CategoryVO from(Category category, String parentName,
+                                   long directCourseCount, long courseCount) {
         return new CategoryVO(
                 category.getId(),
                 category.getName(),
@@ -26,8 +27,8 @@ public record CategoryVO(
                 category.getLevel(),
                 category.getIcon(),
                 category.getStatus(),
-                0L,
-                0L,
+                directCourseCount,
+                courseCount,
                 category.getCreatedAt(),
                 category.getUpdatedAt()
         );

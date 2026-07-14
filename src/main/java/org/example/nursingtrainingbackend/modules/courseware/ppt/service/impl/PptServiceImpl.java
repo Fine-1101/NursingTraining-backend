@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
 import org.example.nursingtrainingbackend.config.properties.OssProperties;
+import org.example.nursingtrainingbackend.modules.course.mapper.CoursePptMapper;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.dto.CreatePptRequest;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.dto.UpdatePptRequest;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
@@ -45,6 +46,7 @@ public class PptServiceImpl implements PptService {
 
     private final PptMapper pptMapper;
     private final UserMapper userMapper;
+    private final CoursePptMapper coursePptMapper;
     private final OSS ossClient;
     private final OssProperties ossProperties;
     @Qualifier("ossFileServiceImpl")
@@ -270,13 +272,14 @@ public class PptServiceImpl implements PptService {
     }
 
     private PptListItem toListItem(Ppt ppt) {
+        long courseCount = coursePptMapper.countByPptId(ppt.getId());
         return PptListItem.builder()
                 .id(ppt.getId())
                 .title(ppt.getTitle())
                 .originalName(ppt.getOriginalName())
                 .fileSize(ppt.getFileSize())
                 .fileSizeText(formatFileSize(ppt.getFileSize()))
-                .courseCount(0L)
+                .courseCount(courseCount)
                 .uploaderId(ppt.getCreatedBy())
                 .uploaderName(getUploaderName(ppt.getCreatedBy()))
                 .uploadedAt(ppt.getUploadedAt())
@@ -285,13 +288,14 @@ public class PptServiceImpl implements PptService {
     }
 
     private PptDetailVO toDetailVO(Ppt ppt) {
+        long courseCount = coursePptMapper.countByPptId(ppt.getId());
         return PptDetailVO.builder()
                 .id(ppt.getId())
                 .title(ppt.getTitle())
                 .description(ppt.getDescription())
                 .originalName(ppt.getOriginalName())
                 .fileSize(ppt.getFileSize())
-                .courseCount(0L)
+                .courseCount(courseCount)
                 .allowDownload(ppt.getAllowDownload() == 1)
                 .uploaderId(ppt.getCreatedBy())
                 .uploaderName(getUploaderName(ppt.getCreatedBy()))

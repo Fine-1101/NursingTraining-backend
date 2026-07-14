@@ -533,6 +533,11 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         vo.setCategoryName(structure.getCategoryName());
         vo.setCourseType(courseDept != null && courseDept.getRequired() != null && courseDept.getRequired() == 1 ? "REQUIRED" : "OPTIONAL");
         vo.setTotalPointCount(structure.getTotalPointCount());
+        vo.setPointCount(structure.getTotalPointCount());
+
+        // 统计章节数
+        int chapterCount = structure.getChapters() != null ? structure.getChapters().size() : 0;
+        vo.setChapterCount(chapterCount);
 
         // 统计已完成课程点
         int completedPointCount = (int) pointProgressMap.values().stream()
@@ -620,11 +625,15 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
                     }).collect(Collectors.toList())
                             : Collections.emptyList();
                     pointVO.setResources(resources);
+                    pointVO.setResourceCount(resources.size());
                     return pointVO;
                 }).collect(Collectors.toList())
                         : Collections.emptyList();
 
                 chapterVO.setPoints(pointVOs);
+                chapterVO.setPointCount(pointVOs.size());
+                chapterVO.setCompletedPointCount((int) pointVOs.stream()
+                        .filter(p -> "COMPLETED".equals(p.getLearningStatus())).count());
                 return chapterVO;
             }).collect(Collectors.toList());
             vo.setChapters(chapterVOs);
@@ -867,6 +876,8 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         vo.setCategoryName(categoryName);
         vo.setCourseType(courseDept != null && courseDept.getRequired() != null && courseDept.getRequired() == 1 ? "REQUIRED" : "OPTIONAL");
         vo.setTotalPointCount(0);
+        vo.setPointCount(0);
+        vo.setChapterCount(0);
         vo.setCompletedPointCount(0);
         vo.setChapters(Collections.emptyList());
 

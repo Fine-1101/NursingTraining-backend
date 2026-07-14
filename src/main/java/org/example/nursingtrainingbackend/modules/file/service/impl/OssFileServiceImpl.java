@@ -16,6 +16,8 @@ import org.example.nursingtrainingbackend.modules.file.mapper.FileUploadRecordMa
 import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.file.vo.FileUploadResponse;
 import org.example.nursingtrainingbackend.modules.file.vo.UploadPolicyResponse;
+import org.example.nursingtrainingbackend.config.condition.OssEnabledCondition;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Primary;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ import java.util.Set;
 
 @Primary
 @Service
+@Conditional(OssEnabledCondition.class)
 @RequiredArgsConstructor
 public class OssFileServiceImpl implements FileService {
 

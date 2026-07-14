@@ -351,19 +351,16 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
             vo.setDepartmentName(settingsStudentMapper.selectDepartmentNameById(student.getDeptId()));
         }
 
-        // 计算课程数和平均进度
+        // 查询课程进度列表（用于展示课程数）
         List<CourseProgressItemVO> items = student.getDeptId() != null
                 ? settingsStudentMapper.selectStudentCourseProgress(student.getId(), student.getDeptId())
                 : new ArrayList<>();
         vo.setCourseCount(items.size());
-        if (items.isEmpty()) {
-            vo.setAverageProgressPercent(BigDecimal.ZERO);
-        } else {
-            BigDecimal total = items.stream()
-                    .map(CourseProgressItemVO::getProgressPercent)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            vo.setAverageProgressPercent(total.divide(BigDecimal.valueOf(items.size()), 2, RoundingMode.HALF_UP));
-        }
+
+        // 平均学习进度：直接从 user_course_progress 表计算该学员所有课程的 progress_percent 平均值
+        BigDecimal avgProgress = settingsStudentMapper.selectAvgProgressByUserId(student.getId());
+        vo.setAverageProgressPercent(avgProgress != null ? avgProgress : BigDecimal.ZERO);
+
         return vo;
     }
 

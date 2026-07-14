@@ -46,4 +46,12 @@ public interface DashboardMapper {
 
     /** 查询某日期之前注册的学员数 */
     Integer selectLearnerCountBefore(@Param("beforeDate") String beforeDate);
+
+    /** 按周统计指定月份内的学习趋势（下钻第二层） */
+    List<TrendRow> selectWeeklyTrendInMonth(@Param("year") int year,
+                                            @Param("month") int month);
+
+    /** 按天统计指定周内的学习趋势（下钻第三层） */
+    List<TrendRow> selectDailyTrendInWeek(@Param("startDate") String startDate,
+                                          @Param("endDate") String endDate);
 }

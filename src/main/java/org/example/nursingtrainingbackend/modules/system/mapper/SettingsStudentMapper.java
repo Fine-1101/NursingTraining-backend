@@ -11,7 +11,10 @@ import org.example.nursingtrainingbackend.modules.system.vo.DepartmentOptionVO;
 import org.example.nursingtrainingbackend.modules.system.vo.StudentListItemVO;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 
+import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface SettingsStudentMapper extends BaseMapper<User> {
@@ -40,4 +43,10 @@ public interface SettingsStudentMapper extends BaseMapper<User> {
     /** 查询已发布且属于该学员科室的课程 */
     Integer selectPublishedCourseInDept(@Param("courseId") Long courseId,
                                         @Param("deptId") Long deptId);
+
+    /** 查询单个学员的平均学习进度（从 user_course_progress 直接计算） */
+    BigDecimal selectAvgProgressByUserId(@Param("userId") Long userId);
+
+    /** 批量查询多个学员的平均学习进度 */
+    List<Map<String, Object>> selectAvgProgressBatch(@Param("userIds") Collection<Long> userIds);
 }

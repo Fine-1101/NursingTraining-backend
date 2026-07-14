@@ -200,4 +200,76 @@
           AND created_at &lt; #{beforeDate}
     </select>
 
+    <!-- 按周统计指定月份内的学习趋势（下钻第二层，按自然周分段） -->
+    <select id="selectWeeklyTrendInMonth" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.TrendRow">
+        SELECT
+            CONCAT(#{year}, '-', LPAD(#{month}, 2, '0'), '-W', LPAD(weeks.week_index, 2, '0')) AS period,
+            CONCAT('第', weeks.week_index, '周') AS label,
+            (SELECT COUNT(DISTINCT ucp.user_id)
+             FROM user_course_progress ucp
+             WHERE ucp.updated_at &gt;= weeks.week_start
+               AND ucp.updated_at &lt; weeks.week_end
+            ) AS learnerCount,
+            (SELECT COUNT(*)
+             FROM user_course_progress ucp
+             WHERE ucp.status = 2
+               AND ucp.completed_at &gt;= weeks.week_start
+               AND ucp.completed_at &lt; weeks.week_end
+            ) AS completedCourseCount
+        FROM (
+            SELECT
+                seq + 1 AS week_index,
+                DATE_FORMAT(
+                    DATE_ADD(DATE_FORMAT(MAKEDATE(#{year}, 1), '%Y-%m-01'), INTERVAL #{month} - 1 MONTH)
+                    + INTERVAL seq * 7 DAY,
+                    '%Y-%m-%d'
+                ) AS week_start,
+                DATE_FORMAT(
+                    LEAST(
+                        DATE_ADD(DATE_FORMAT(MAKEDATE(#{year}, 1), '%Y-%m-01'), INTERVAL #{month} - 1 MONTH)
+                        + INTERVAL (seq + 1) * 7 DAY,
+                        DATE_ADD(DATE_FORMAT(MAKEDATE(#{year}, 1), '%Y-%m-01'), INTERVAL #{month} MONTH)
+                    ),
+                    '%Y-%m-%d'
+                ) AS week_end
+            FROM (
+                SELECT 0 AS seq UNION SELECT 1 UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5
+            ) seq_tbl
+            WHERE DATE_ADD(DATE_FORMAT(MAKEDATE(#{year}, 1), '%Y-%m-01'), INTERVAL #{month} - 1 MONTH)
+                  + INTERVAL seq * 7 DAY
+                  &lt; DATE_ADD(DATE_FORMAT(MAKEDATE(#{year}, 1), '%Y-%m-01'), INTERVAL #{month} MONTH)
+        ) weeks
+        WHERE weeks.week_start &lt; weeks.week_end
+        ORDER BY weeks.week_start
+    </select>
+
+    <!-- 按天统计指定周内的学习趋势（下钻第三层） -->
+    <select id="selectDailyTrendInWeek" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.TrendRow">
+        SELECT
+            DATE_FORMAT(days.day_date, '%Y-%m-%d') AS period,
+            DATE_FORMAT(days.day_date, '%c月%e日') AS label,
+            (SELECT COUNT(DISTINCT ucp.user_id)
+             FROM user_course_progress ucp
+             WHERE ucp.updated_at &gt;= days.day_date
+               AND ucp.updated_at &lt; days.next_day
+            ) AS learnerCount,
+            (SELECT COUNT(*)
+             FROM user_course_progress ucp
+             WHERE ucp.status = 2
+               AND ucp.completed_at &gt;= days.day_date
+               AND ucp.completed_at &lt; days.next_day
+            ) AS completedCourseCount
+        FROM (
+            SELECT
+                DATE_FORMAT(DATE_ADD(#{startDate}, INTERVAL seq DAY), '%Y-%m-%d') AS day_date,
+                DATE_FORMAT(DATE_ADD(#{startDate}, INTERVAL seq + 1 DAY), '%Y-%m-%d') AS next_day
+            FROM (
+                SELECT 0 AS seq UNION SELECT 1 UNION SELECT 2 UNION SELECT 3
+                UNION SELECT 4 UNION SELECT 5 UNION SELECT 6
+            ) seq_tbl
+            WHERE DATE_ADD(#{startDate}, INTERVAL seq DAY) &lt; #{endDate}
+        ) days
+        ORDER BY days.day_date
+    </select>
+
 </mapper>

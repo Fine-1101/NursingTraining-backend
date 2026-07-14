@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/nursing?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD:127315jj}
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
@@ -49,3 +49,4 @@ app:
     access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
     region-id: ${VOD_REGION_ID:cn-shanghai}
     transcode-template-group-id: ${VOD_TRANSCODE_TEMPLATE_GROUP_ID:}
+
