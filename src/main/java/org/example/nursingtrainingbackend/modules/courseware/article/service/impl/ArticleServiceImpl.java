@@ -3,6 +3,7 @@ package org.example.nursingtrainingbackend.modules.courseware.article.service.im
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.page.PageResult;
@@ -18,14 +19,18 @@ import org.example.nursingtrainingbackend.modules.courseware.article.mapper.Arti
 import org.example.nursingtrainingbackend.modules.courseware.article.mapper.ArticleStatSnapshotMapper;
 import org.example.nursingtrainingbackend.modules.courseware.article.service.ArticleService;
 import org.example.nursingtrainingbackend.modules.courseware.article.vo.*;
+
 import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.AuthenticatedUser;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -43,6 +48,8 @@ public class ArticleServiceImpl implements ArticleService {
     private final UserMapper userMapper;
     private final ArticleAttachmentProperties attachmentProperties;
     private final ArticleStatSnapshotMapper snapshotMapper;
+
+    @Resource(name = "ossFileServiceImpl")
     private final FileService fileService;
     
     @Override
@@ -617,7 +624,7 @@ public class ArticleServiceImpl implements ArticleService {
         }
         
         try {
-            java.net.URI uri = new java.net.URI(attachmentUrl);
+            URI uri = new URI(attachmentUrl);
             String host = uri.getHost();
             if (host == null) {
                 throw new BusinessException(ErrorCode.ARTICLE_ATTACHMENT_INVALID);
@@ -644,7 +651,7 @@ public class ArticleServiceImpl implements ArticleService {
         }
         
         try {
-            java.net.URI uri = new java.net.URI(attachmentUrl);
+            URI uri = new URI(attachmentUrl);
             String path = uri.getPath();
             if (path == null) {
                 throw new BusinessException(ErrorCode.ARTICLE_ATTACHMENT_INVALID);
@@ -723,12 +730,12 @@ public class ArticleServiceImpl implements ArticleService {
             return null;
         }
         try {
-            java.net.URI uri = new java.net.URI(url);
+            URI uri = new URI(url);
             String path = uri.getPath();
             if (path != null && path.length() > 1) {
                 return path.startsWith("/") ? path.substring(1) : path;
             }
-        } catch (java.net.URISyntaxException ignored) {
+        } catch (URISyntaxException ignored) {
         }
         String trimmed = url.startsWith("/") ? url.substring(1) : url;
         return trimmed;

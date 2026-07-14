@@ -3,6 +3,7 @@ package org.example.nursingtrainingbackend.modules.file.job;
 import com.aliyun.oss.OSS;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.nursingtrainingbackend.common.annotation.DistributedLock;
 import org.example.nursingtrainingbackend.config.OssConfig;
 import org.example.nursingtrainingbackend.modules.file.entity.FileUploadRecord;
 import org.example.nursingtrainingbackend.modules.file.mapper.FileUploadRecordMapper;
@@ -30,6 +31,7 @@ public class OrphanFileCleanupJob {
      * 每天凌晨2点执行
      */
     @Scheduled(cron = "0 0 2 * * ?")
+    @DistributedLock(key = "job:orphan_file_cleanup", leaseTime = 600, waitTime = 120)
     @Transactional(rollbackFor = Exception.class)
     public void cleanup() {
         log.info("开始执行孤立文件清理任务");

@@ -132,6 +132,34 @@
         ORDER BY periods.month_start
     </select>
 
+    <!-- 按开始学习时间聚合；周粒度以 startDate 为滚动周起点。 -->
+    <select id="selectCourseTrendByRange" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.CourseTrendRow">
+        SELECT
+            CASE
+                WHEN #{granularity} = 'DAY' THEN
+                    DATE_FORMAT(COALESCE(ucp.started_at, ucp.created_at), '%Y-%m-%d')
+                WHEN #{granularity} = 'WEEK' THEN
+                    DATE_FORMAT(
+                        DATE_SUB(
+                            DATE(COALESCE(ucp.started_at, ucp.created_at)),
+                            INTERVAL MOD(
+                                DATEDIFF(DATE(COALESCE(ucp.started_at, ucp.created_at)), #{startDate}), 7
+                            ) DAY
+                        ),
+                        '%Y-%m-%d'
+                    )
+                ELSE DATE_FORMAT(COALESCE(ucp.started_at, ucp.created_at), '%Y-%m-01')
+            END AS periodStart,
+            COUNT(DISTINCT ucp.user_id) AS learnerCount,
+            COUNT(DISTINCT CASE WHEN ucp.status = 2 THEN ucp.user_id END) AS completedLearnerCount
+        FROM user_course_progress ucp
+        WHERE ucp.course_id = #{courseId}
+          AND COALESCE(ucp.started_at, ucp.created_at) &gt;= #{startDate}
+          AND COALESCE(ucp.started_at, ucp.created_at) &lt; #{endDate}
+        GROUP BY periodStart
+        ORDER BY periodStart
+    </select>
+
     <!-- 科室完成率排行 -->
     <select id="selectDepartmentRanking" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.DepartmentRankRow">
         SELECT

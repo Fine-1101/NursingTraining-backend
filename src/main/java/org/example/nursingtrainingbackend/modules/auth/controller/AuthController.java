@@ -3,6 +3,7 @@ package org.example.nursingtrainingbackend.modules.auth.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.nursingtrainingbackend.common.annotation.RateLimit;
 import org.example.nursingtrainingbackend.common.result.Result;
 import org.example.nursingtrainingbackend.modules.auth.dto.LoginRequest;
 import org.example.nursingtrainingbackend.modules.auth.dto.RegisterRequest;
@@ -23,11 +24,13 @@ public class AuthController {
     private final JwtService jwtService;
 
     @PostMapping("/login")
+    @RateLimit(key = "login", time = 60, count = 5, limitType = RateLimit.LimitType.IP)
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return Result.success(authService.login(request));
     }
 
     @PostMapping("/register")
+    @RateLimit(key = "register", time = 3600, count = 3, limitType = RateLimit.LimitType.IP)
     public Result<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
         return Result.success(authService.register(request));
     }

@@ -3,11 +3,13 @@ package org.example.nursingtrainingbackend.modules.file.controller;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.example.nursingtrainingbackend.common.annotation.RateLimit;
 import org.example.nursingtrainingbackend.common.result.Result;
 import org.example.nursingtrainingbackend.modules.file.dto.UploadPolicyRequest;
 import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.file.vo.FileUploadResponse;
 import org.example.nursingtrainingbackend.modules.file.vo.UploadPolicyResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
 public class FileController {
+    @Qualifier("ossFileServiceImpl")
     private final FileService fileService;
 
     /**
@@ -35,6 +38,7 @@ public class FileController {
     );
 
     @PostMapping("/upload")
+    @RateLimit(key = "upload-token", time = 60, count = 10, limitType = RateLimit.LimitType.IP)
     public Result<FileUploadResponse> upload(@RequestPart("file") MultipartFile file,
             @RequestParam(required = false) String uploadType,
             @RequestParam(defaultValue = "files") @Pattern(regexp = "^[a-zA-Z0-9/_-]{1,64}$") String directory,

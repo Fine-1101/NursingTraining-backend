@@ -1,6 +1,7 @@
 package org.example.nursingtrainingbackend.modules.learning.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+//import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
@@ -28,13 +29,16 @@ import org.example.nursingtrainingbackend.modules.learning.vo.*;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.SecurityUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -44,6 +48,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class LearnerCourseServiceImpl implements LearnerCourseService {
+
+    private static final String COURSE_STUDY_CACHE_PREFIX = "nursing:course:study:v1:";
+    private static final long COURSE_STUDY_CACHE_TTL_MINUTES = 20;
 
     private final UserMapper userMapper;
     private final CourseMapper courseMapper;
@@ -60,6 +67,8 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
     private final UserCourseProgressMapper userCourseProgressMapper;
     private final UserCoursePointProgressMapper userCoursePointProgressMapper;
     private final UserCourseResourceProgressMapper userCourseResourceProgressMapper;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResult<LearnerCourseVO> getLearnerCourses(LearnerCourseQuery query) {
@@ -257,61 +266,277 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
                        .eq(UserCourseProgress::getCourseId, courseId);
         UserCourseProgress courseProgress = userCourseProgressMapper.selectOne(progressWrapper);
 
-        // 4. 获取类别名称
+        // 4. 加载课程结构（优先从缓存）
+        CourseStructureCacheVO structure = loadCourseStructure(courseId, course, user);
+
+        // 5. 查询用户进度数据
+        Map<Long, UserCoursePointProgress> pointProgressMap = loadPointProgressMap(courseId, userId, structure);
+        Map<String, UserCourseResourceProgress> resourceProgressMap = loadResourceProgressMap(structure, userId);
+
+        // 6. 组装响应：缓存结构 + 实时进度
+        return buildDetailFromStructure(structure, courseDept, courseProgress,
+                pointProgressMap, resourceProgressMap);
+    }
+
+    // ==================== 课程结构缓存 ====================
+
+    /**
+     * 加载课程结构：优先从 Redis 缓存读取，未命中则查询 DB 并写回缓存
+     */
+    private CourseStructureCacheVO loadCourseStructure(Long courseId, Course course, User user) {
+        String cacheKey = COURSE_STUDY_CACHE_PREFIX + courseId;
+
+        // 尝试从缓存读取
+        try {
+            String cachedJson = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedJson != null && !cachedJson.isBlank()) {
+                return objectMapper.readValue(cachedJson, CourseStructureCacheVO.class);
+            }
+        } catch (Exception e) {
+            log.warn("读取课程结构缓存失败, courseId={}", courseId, e);
+        }
+
+        // 缓存未命中，从 DB 构建
+        CourseStructureCacheVO structure = buildCourseStructureFromDb(courseId, course, user);
+
+        // 写入缓存
+        try {
+            String json = objectMapper.writeValueAsString(structure);
+            redisTemplate.opsForValue().set(cacheKey, json, COURSE_STUDY_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("写入课程结构缓存失败, courseId={}", courseId, e);
+        }
+
+        return structure;
+    }
+
+    /**
+     * 从 DB 构建课程结构缓存 VO（仅静态元数据，不含用户进度）
+     */
+    private CourseStructureCacheVO buildCourseStructureFromDb(Long courseId, Course course, User user) {
+        // 类别名称
         String categoryName = null;
         if (course.getCategoryId() != null) {
             Category category = categoryMapper.selectById(course.getCategoryId());
             categoryName = category != null ? category.getName() : null;
         }
 
-        // 5. 查询章节列表
+        // 查询章节列表
         LambdaQueryWrapper<CourseChapter> chapterWrapper = new LambdaQueryWrapper<>();
         chapterWrapper.eq(CourseChapter::getCourseId, courseId)
                       .isNull(CourseChapter::getDeletedAt)
                       .orderByAsc(CourseChapter::getSort);
         List<CourseChapter> chapters = courseChapterMapper.selectList(chapterWrapper);
 
-        // 6. 查询所有课程点
         if (chapters.isEmpty()) {
-            return buildEmptyDetail(course, categoryName, courseDept, courseProgress);
+            return CourseStructureCacheVO.builder()
+                    .courseId(courseId)
+                    .title(course.getTitle())
+                    .summary(course.getSummary())
+                    .coverUrl(course.getCoverUrl())
+                    .categoryName(categoryName)
+                    .totalPointCount(0)
+                    .firstPointId(null)
+                    .chapters(Collections.emptyList())
+                    .build();
         }
+
         List<Long> chapterIds = chapters.stream().map(CourseChapter::getId).toList();
 
+        // 查询所有启用课程点
         LambdaQueryWrapper<CoursePoint> pointWrapper = new LambdaQueryWrapper<>();
         pointWrapper.in(CoursePoint::getChapterId, chapterIds)
                     .eq(CoursePoint::getStatus, 1)
                     .isNull(CoursePoint::getDeletedAt)
                     .orderByAsc(CoursePoint::getSort);
         List<CoursePoint> allPoints = coursePointMapper.selectList(pointWrapper);
-
-        // 7. 批量查询课程点进度
         List<Long> pointIds = allPoints.stream().map(CoursePoint::getId).toList();
-        Map<Long, UserCoursePointProgress> pointProgressMap = Collections.emptyMap();
-        if (!pointIds.isEmpty()) {
-            LambdaQueryWrapper<UserCoursePointProgress> ppWrapper = new LambdaQueryWrapper<>();
-            ppWrapper.eq(UserCoursePointProgress::getUserId, userId)
-                     .in(UserCoursePointProgress::getCoursePointId, pointIds);
-            pointProgressMap = userCoursePointProgressMapper.selectList(ppWrapper).stream()
-                    .collect(Collectors.toMap(UserCoursePointProgress::getCoursePointId, p -> p, (p1, p2) -> p1));
+
+        // 加载静态资源元数据（不含进度）
+        Map<Long, List<CourseStructureCacheVO.ResourceItem>> pointResourcesMap = loadPointResourceMetadata(pointIds);
+
+        // 构建章节结构
+        Map<Long, List<CoursePoint>> pointsByChapter = allPoints.stream()
+                .collect(Collectors.groupingBy(CoursePoint::getChapterId));
+
+        List<CourseStructureCacheVO.ChapterItem> chapterItems = chapters.stream().map(chapter -> {
+            List<CoursePoint> chapterPoints = pointsByChapter.getOrDefault(chapter.getId(), Collections.emptyList());
+            List<CourseStructureCacheVO.PointItem> pointItems = chapterPoints.stream().map(point ->
+                    CourseStructureCacheVO.PointItem.builder()
+                            .pointId(point.getId())
+                            .title(point.getTitle())
+                            .description(point.getDescription())
+                            .required(point.getRequired() != null && point.getRequired() == 1)
+                            .sort(point.getSort())
+                            .resources(pointResourcesMap.getOrDefault(point.getId(), Collections.emptyList()))
+                            .build()
+            ).collect(Collectors.toList());
+
+            return CourseStructureCacheVO.ChapterItem.builder()
+                    .chapterId(chapter.getId())
+                    .title(chapter.getTitle())
+                    .sort(chapter.getSort())
+                    .points(pointItems)
+                    .build();
+        }).collect(Collectors.toList());
+
+        Long firstPointId = allPoints.isEmpty() ? null : allPoints.get(0).getId();
+
+        return CourseStructureCacheVO.builder()
+                .courseId(courseId)
+                .title(course.getTitle())
+                .summary(course.getSummary())
+                .coverUrl(course.getCoverUrl())
+                .categoryName(categoryName)
+                .totalPointCount(allPoints.size())
+                .firstPointId(firstPointId)
+                .chapters(chapterItems)
+                .build();
+    }
+
+    /**
+     * 批量加载课程点的静态资源元数据（标题、时长等，不含用户进度）
+     */
+    private Map<Long, List<CourseStructureCacheVO.ResourceItem>> loadPointResourceMetadata(List<Long> pointIds) {
+        if (pointIds.isEmpty()) return Collections.emptyMap();
+
+        Map<Long, List<CourseStructureCacheVO.ResourceItem>> result = new HashMap<>();
+
+        // 文章
+        List<CoursePointArticle> articleRels = coursePointArticleMapper.selectList(
+                new LambdaQueryWrapper<CoursePointArticle>()
+                        .in(CoursePointArticle::getCoursePointId, pointIds)
+                        .orderByAsc(CoursePointArticle::getSort));
+        Set<Long> articleIds = articleRels.stream().map(CoursePointArticle::getArticleId).collect(Collectors.toSet());
+        Map<Long, Article> articleMap = articleIds.isEmpty() ? Collections.emptyMap() :
+                articleMapper.selectList(new LambdaQueryWrapper<Article>().in(Article::getId, articleIds))
+                        .stream().collect(Collectors.toMap(Article::getId, a -> a));
+        for (CoursePointArticle rel : articleRels) {
+            Article article = articleMap.get(rel.getArticleId());
+            if (article == null) continue;
+            result.computeIfAbsent(rel.getCoursePointId(), k -> new ArrayList<>())
+                    .add(CourseStructureCacheVO.ResourceItem.builder()
+                            .resourceType("ARTICLE").resourceId(article.getId())
+                            .title(article.getTitle()).build());
         }
 
-        // 8. 批量查询课件关联和课件进度
-        Map<Long, List<LearnerCourseDetailVO.ResourceVO>> pointResourcesMap = loadPointResources(pointIds, userId);
+        // 视频
+        List<CoursePointVideo> videoRels = coursePointVideoMapper.selectList(
+                new LambdaQueryWrapper<CoursePointVideo>()
+                        .in(CoursePointVideo::getCoursePointId, pointIds)
+                        .orderByAsc(CoursePointVideo::getSort));
+        Set<Long> videoIds = videoRels.stream().map(CoursePointVideo::getVideoId).collect(Collectors.toSet());
+        Map<Long, Video> videoMap = videoIds.isEmpty() ? Collections.emptyMap() :
+                videoMapper.selectList(new LambdaQueryWrapper<Video>().in(Video::getId, videoIds))
+                        .stream().collect(Collectors.toMap(Video::getId, v -> v));
+        for (CoursePointVideo rel : videoRels) {
+            Video video = videoMap.get(rel.getVideoId());
+            if (video == null) continue;
+            result.computeIfAbsent(rel.getCoursePointId(), k -> new ArrayList<>())
+                    .add(CourseStructureCacheVO.ResourceItem.builder()
+                            .resourceType("VIDEO").resourceId(video.getId())
+                            .title(video.getTitle()).durationSeconds(video.getDuration()).build());
+        }
 
-        // 9. 统计
-        int totalPointCount = allPoints.size();
+        // PPT
+        List<CoursePointPpt> pptRels = coursePointPptMapper.selectList(
+                new LambdaQueryWrapper<CoursePointPpt>()
+                        .in(CoursePointPpt::getCoursePointId, pointIds)
+                        .orderByAsc(CoursePointPpt::getSort));
+        Set<Long> pptIds = pptRels.stream().map(CoursePointPpt::getPptId).collect(Collectors.toSet());
+        Map<Long, Ppt> pptMap = pptIds.isEmpty() ? Collections.emptyMap() :
+                pptMapper.selectList(new LambdaQueryWrapper<Ppt>().in(Ppt::getId, pptIds))
+                        .stream().collect(Collectors.toMap(Ppt::getId, p -> p));
+        for (CoursePointPpt rel : pptRels) {
+            Ppt ppt = pptMap.get(rel.getPptId());
+            if (ppt == null) continue;
+            result.computeIfAbsent(rel.getCoursePointId(), k -> new ArrayList<>())
+                    .add(CourseStructureCacheVO.ResourceItem.builder()
+                            .resourceType("PPT").resourceId(ppt.getId())
+                            .title(ppt.getTitle()).build());
+        }
+
+        return result;
+    }
+
+    // ==================== 进度数据加载 ====================
+
+    /**
+     * 批量加载课程点进度
+     */
+    private Map<Long, UserCoursePointProgress> loadPointProgressMap(Long courseId, Long userId, CourseStructureCacheVO structure) {
+        List<Long> pointIds = new ArrayList<>();
+        if (structure.getChapters() != null) {
+            for (var ch : structure.getChapters()) {
+                if (ch.getPoints() != null) {
+                    ch.getPoints().forEach(p -> pointIds.add(p.getPointId()));
+                }
+            }
+        }
+        if (pointIds.isEmpty()) return Collections.emptyMap();
+
+        LambdaQueryWrapper<UserCoursePointProgress> ppWrapper = new LambdaQueryWrapper<>();
+        ppWrapper.eq(UserCoursePointProgress::getUserId, userId)
+                 .in(UserCoursePointProgress::getCoursePointId, pointIds);
+        return userCoursePointProgressMapper.selectList(ppWrapper).stream()
+                .collect(Collectors.toMap(UserCoursePointProgress::getCoursePointId, p -> p, (p1, p2) -> p1));
+    }
+
+    /**
+     * 批量加载资源进度，key="TYPE:resourceId:coursePointId"
+     */
+    private Map<String, UserCourseResourceProgress> loadResourceProgressMap(CourseStructureCacheVO structure, Long userId) {
+        List<Long> pointIds = new ArrayList<>();
+        if (structure.getChapters() != null) {
+            for (var ch : structure.getChapters()) {
+                if (ch.getPoints() != null) {
+                    ch.getPoints().forEach(p -> pointIds.add(p.getPointId()));
+                }
+            }
+        }
+        if (pointIds.isEmpty()) return Collections.emptyMap();
+
+        LambdaQueryWrapper<UserCourseResourceProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserCourseResourceProgress::getUserId, userId)
+               .in(UserCourseResourceProgress::getCoursePointId, pointIds);
+        List<UserCourseResourceProgress> progresses = userCourseResourceProgressMapper.selectList(wrapper);
+
+        Map<String, UserCourseResourceProgress> map = new HashMap<>();
+        for (UserCourseResourceProgress rp : progresses) {
+            String typeName = switch (rp.getResourceType() != null ? rp.getResourceType() : 0) {
+                case 1 -> "ARTICLE";
+                case 2 -> "VIDEO";
+                case 3 -> "PPT";
+                default -> "UNKNOWN";
+            };
+            String key = typeName + ":" + rp.getResourceId() + ":" + rp.getCoursePointId();
+            map.put(key, rp);
+        }
+        return map;
+    }
+
+    // ==================== 响应组装 ====================
+
+    /**
+     * 用缓存的课程结构 + 实时进度数据组装 LearnerCourseDetailVO
+     */
+    private LearnerCourseDetailVO buildDetailFromStructure(CourseStructureCacheVO structure,
+                                                            CourseDepartment courseDept,
+                                                            UserCourseProgress courseProgress,
+                                                            Map<Long, UserCoursePointProgress> pointProgressMap,
+                                                            Map<String, UserCourseResourceProgress> resourceProgressMap) {
+        LearnerCourseDetailVO vo = new LearnerCourseDetailVO();
+        vo.setCourseId(structure.getCourseId());
+        vo.setTitle(structure.getTitle());
+        vo.setSummary(structure.getSummary());
+        vo.setCoverUrl(structure.getCoverUrl());
+        vo.setCategoryName(structure.getCategoryName());
+        vo.setCourseType(courseDept != null && courseDept.getRequired() != null && courseDept.getRequired() == 1 ? "REQUIRED" : "OPTIONAL");
+        vo.setTotalPointCount(structure.getTotalPointCount());
+
+        // 统计已完成课程点
         int completedPointCount = (int) pointProgressMap.values().stream()
                 .filter(p -> p.getStatus() == 2).count();
-
-        // 10. 构建响应
-        LearnerCourseDetailVO vo = new LearnerCourseDetailVO();
-        vo.setCourseId(courseId);
-        vo.setTitle(course.getTitle());
-        vo.setSummary(course.getSummary());
-        vo.setCoverUrl(course.getCoverUrl());
-        vo.setCategoryName(categoryName);
-        vo.setCourseType(courseDept != null && courseDept.getRequired() != null && courseDept.getRequired() == 1 ? "REQUIRED" : "OPTIONAL");
-        vo.setTotalPointCount(totalPointCount);
         vo.setCompletedPointCount(completedPointCount);
 
         // 学习状态
@@ -331,49 +556,82 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
 
         // 当前学习课程点
         Long currentPointId = courseProgress != null ? courseProgress.getLastPointId() : null;
-        if (currentPointId == null && !allPoints.isEmpty()) {
-            currentPointId = allPoints.get(0).getId();
+        if (currentPointId == null && structure.getFirstPointId() != null) {
+            currentPointId = structure.getFirstPointId();
         }
         vo.setCurrentPointId(currentPointId);
 
-        // 构建章节+课程点结构
-        Map<Long, List<CoursePoint>> pointsByChapter = allPoints.stream()
-                .collect(Collectors.groupingBy(CoursePoint::getChapterId));
+        // 构建章节+课程点结构（含实时进度）
+        if (structure.getChapters() != null) {
+            List<LearnerCourseDetailVO.ChapterVO> chapterVOs = structure.getChapters().stream().map(cachedChapter -> {
+                LearnerCourseDetailVO.ChapterVO chapterVO = new LearnerCourseDetailVO.ChapterVO();
+                chapterVO.setChapterId(cachedChapter.getChapterId());
+                chapterVO.setTitle(cachedChapter.getTitle());
+                chapterVO.setSort(cachedChapter.getSort());
 
-        final Map<Long, UserCoursePointProgress> finalPointProgressMap = pointProgressMap;
-        List<LearnerCourseDetailVO.ChapterVO> chapterVOs = chapters.stream().map(chapter -> {
-            LearnerCourseDetailVO.ChapterVO chapterVO = new LearnerCourseDetailVO.ChapterVO();
-            chapterVO.setChapterId(chapter.getId());
-            chapterVO.setTitle(chapter.getTitle());
-            chapterVO.setSort(chapter.getSort());
+                List<LearnerCourseDetailVO.PointVO> pointVOs = cachedChapter.getPoints() != null
+                        ? cachedChapter.getPoints().stream().map(cachedPoint -> {
+                    LearnerCourseDetailVO.PointVO pointVO = new LearnerCourseDetailVO.PointVO();
+                    pointVO.setPointId(cachedPoint.getPointId());
+                    pointVO.setTitle(cachedPoint.getTitle());
+                    pointVO.setDescription(cachedPoint.getDescription());
+                    pointVO.setRequired(cachedPoint.getRequired());
+                    pointVO.setSort(cachedPoint.getSort());
 
-            List<CoursePoint> chapterPoints = pointsByChapter.getOrDefault(chapter.getId(), Collections.emptyList());
-            List<LearnerCourseDetailVO.PointVO> pointVOs = chapterPoints.stream().map(point -> {
-                LearnerCourseDetailVO.PointVO pointVO = new LearnerCourseDetailVO.PointVO();
-                pointVO.setPointId(point.getId());
-                pointVO.setTitle(point.getTitle());
-                pointVO.setDescription(point.getDescription());
-                pointVO.setRequired(point.getRequired() != null && point.getRequired() == 1);
-                pointVO.setSort(point.getSort());
+                    // 课程点进度
+                    UserCoursePointProgress pp = pointProgressMap.get(cachedPoint.getPointId());
+                    if (pp == null) {
+                        pointVO.setLearningStatus("NOT_STARTED");
+                    } else if (pp.getStatus() == 1) {
+                        pointVO.setLearningStatus("LEARNING");
+                    } else {
+                        pointVO.setLearningStatus("COMPLETED");
+                    }
 
-                UserCoursePointProgress pp = finalPointProgressMap.get(point.getId());
-                if (pp == null) {
-                    pointVO.setLearningStatus("NOT_STARTED");
-                } else if (pp.getStatus() == 1) {
-                    pointVO.setLearningStatus("LEARNING");
-                } else {
-                    pointVO.setLearningStatus("COMPLETED");
-                }
+                    // 资源列表（含实时进度）
+                    List<LearnerCourseDetailVO.ResourceVO> resources = cachedPoint.getResources() != null
+                            ? cachedPoint.getResources().stream().map(cachedRes -> {
+                        LearnerCourseDetailVO.ResourceVO resVO = new LearnerCourseDetailVO.ResourceVO();
+                        resVO.setResourceType(cachedRes.getResourceType());
+                        resVO.setResourceId(cachedRes.getResourceId());
+                        resVO.setTitle(cachedRes.getTitle());
+                        resVO.setDurationSeconds(cachedRes.getDurationSeconds());
 
-                pointVO.setResources(pointResourcesMap.getOrDefault(point.getId(), Collections.emptyList()));
-                return pointVO;
+                        String key = cachedRes.getResourceType() + ":" + cachedRes.getResourceId() + ":" + cachedPoint.getPointId();
+                        UserCourseResourceProgress rp = resourceProgressMap.get(key);
+                        if (rp == null) {
+                            resVO.setLearningStatus("NOT_STARTED");
+                            resVO.setProgressPercent(BigDecimal.ZERO);
+                            if ("VIDEO".equals(cachedRes.getResourceType())) resVO.setLastPositionSeconds(0);
+                        } else if (rp.getStatus() == 1) {
+                            resVO.setLearningStatus("LEARNING");
+                            resVO.setProgressPercent(rp.getProgressPercent() != null ? rp.getProgressPercent() : BigDecimal.ZERO);
+                            if ("VIDEO".equals(cachedRes.getResourceType())) {
+                                resVO.setLastPositionSeconds(rp.getLastPositionSeconds() != null ? rp.getLastPositionSeconds() : 0);
+                            }
+                        } else {
+                            resVO.setLearningStatus("COMPLETED");
+                            resVO.setProgressPercent(BigDecimal.valueOf(100));
+                            if ("VIDEO".equals(cachedRes.getResourceType())) {
+                                resVO.setLastPositionSeconds(cachedRes.getDurationSeconds());
+                            }
+                        }
+                        return resVO;
+                    }).collect(Collectors.toList())
+                            : Collections.emptyList();
+                    pointVO.setResources(resources);
+                    return pointVO;
+                }).collect(Collectors.toList())
+                        : Collections.emptyList();
+
+                chapterVO.setPoints(pointVOs);
+                return chapterVO;
             }).collect(Collectors.toList());
+            vo.setChapters(chapterVOs);
+        } else {
+            vo.setChapters(Collections.emptyList());
+        }
 
-            chapterVO.setPoints(pointVOs);
-            return chapterVO;
-        }).collect(Collectors.toList());
-
-        vo.setChapters(chapterVOs);
         return vo;
     }
 

@@ -45,14 +45,30 @@ public class CacheEvictionListener {
             case STUDENT_DEPT_DISTRIBUTION -> evictPattern("nursing:admin:settings:student_department_distribution:v1:*");
             case TAG_OVERVIEW -> evict("nursing:tag:overview");
             case TAG_STATISTICS -> evict("nursing:tag:statistics");
+            case LEARNER_HOME -> evictPattern("nursing:learner:home:v1:*");
+            case DEPARTMENT_VISIBLE_COURSES -> evictPattern("nursing:department:visible_courses:v1:*");
+            case LEARNER_RECORD_STATS -> evictPattern("nursing:learner:stats:*");
+            case LEARNER_RANKINGS -> {
+                evictPattern("nursing:rank:course:*");
+                evictPattern("nursing:learner:stats:*");
+            }
+            case COURSE_STUDY -> evictPattern("nursing:course:study:v1:*");
+            case VIDEO_PLAY_URL -> evictPattern("nursing:video:play-url:v1:*");
             case CATEGORY_TREE -> evictPattern("nursing:category:tree:v1:*");
             case CATEGORY_OVERVIEW -> evict("nursing:category:overview:v1");
             case ALL -> {
                 evict("nursing:dashboard:v1");
                 evictPattern("nursing:category:tree:v1:*");
                 evict("nursing:category:overview:v1");
-
                 evictPattern("nursing:admin:settings:student_department_distribution:v1:*");
+                evictPattern("nursing:learner:home:v1:*");
+                evictPattern("nursing:department:visible_courses:v1:*");
+                evictPattern("nursing:admin:settings:student_department_distribution:v1:*");
+                evictPattern("nursing:learner:stats:*");
+                evictPattern("nursing:rank:course:*");
+                evictPattern("nursing:course:study:v1:*");
+                evictPattern("nursing:video:play-url:v1:*");
+
                 evict("nursing:tag:overview");
                 evict("nursing:tag:statistics");
             }

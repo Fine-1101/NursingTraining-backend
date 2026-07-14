@@ -16,6 +16,7 @@ import org.example.nursingtrainingbackend.modules.file.mapper.FileUploadRecordMa
 import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.file.vo.FileUploadResponse;
 import org.example.nursingtrainingbackend.modules.file.vo.UploadPolicyResponse;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,6 +31,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 
+@Primary
 @Service
 @RequiredArgsConstructor
 public class OssFileServiceImpl implements FileService {

@@ -1,6 +1,9 @@
 spring:
   application:
     name: nursing-training-backend
+  autoconfigure:
+    exclude: org.redisson.spring.starter.RedissonAutoConfigurationV2
+
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/nursing?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
     username: ${DB_USERNAME:root}
@@ -20,7 +23,6 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
       database: ${REDIS_DB:0}
       timeout: 3s
 

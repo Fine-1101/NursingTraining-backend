@@ -183,6 +183,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         courseChapterMapper.insert(courseChapter);
         CreateChapterVO vo = new CreateChapterVO();
         BeanUtils.copyProperties(courseChapter, vo);
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
 
 
@@ -217,6 +218,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         vo.setTitle(chapter.getTitle());
         vo.setSort(chapter.getSort());
         vo.setUpdatedAt(chapter.getUpdatedAt());
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
 
@@ -278,6 +280,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         vo.setVideoCount(videoCount);
         vo.setPptCount(pptCount);
         vo.setResourceCount(articleCount + videoCount + pptCount);
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
 
@@ -344,6 +347,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         vo.setPptCount(pptCount);
         vo.setResourceCount(articleCount + videoCount + pptCount);
         vo.setUpdatedAt(point.getUpdatedAt());
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
 
@@ -390,6 +394,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
             }
             newSort++;
         }
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
     }
 
     @Override
@@ -433,6 +438,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
             }
             newSort++;
         }
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
     }
 
     @Override
@@ -646,6 +652,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         UpdateChapterOrderVO vo = new UpdateChapterOrderVO();
         vo.setChapterIds(chapterIds);
         vo.setAffectedCount(chapterIds.size());
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
 
@@ -692,6 +699,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         UpdatePointOrderVO vo = new UpdatePointOrderVO();
         vo.setPointIds(pointIds);
         vo.setAffectedCount(pointIds.size());
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
 
@@ -801,6 +809,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         vo.setStructureValid(errors.isEmpty());
         vo.setValidationErrors(errors);
         vo.setCurrentStep(3);
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
 

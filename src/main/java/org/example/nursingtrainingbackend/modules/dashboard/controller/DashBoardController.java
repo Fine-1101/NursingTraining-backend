@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.nursingtrainingbackend.common.result.Result;
 import org.example.nursingtrainingbackend.modules.course.mapper.CourseMapper;
 import org.example.nursingtrainingbackend.modules.dashboard.service.DashboardService;
+import org.example.nursingtrainingbackend.modules.dashboard.vo.CourseLearningTrendVO;
 import org.example.nursingtrainingbackend.modules.dashboard.vo.DashboardVO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,12 +25,12 @@ public class DashBoardController {
 
     @GetMapping("/dashboard")
     public Result<DashboardVO> getDashboard(
-            @RequestParam(defaultValue = "LAST_6_MONTHS") String range,
+            @RequestParam(defaultValue = "LAST_1_WEEKS") String range,
             @RequestParam(defaultValue = "10") int departmentLimit
     ) {
         // 校验 range 参数
-        if (!range.matches("LAST_6_WEEKS|LAST_6_MONTHS|LAST_12_MONTHS")) {
-            range = "LAST_6_MONTHS";
+        if (!range.matches("LAST_1_WEEKS|LAST_1_MONTHS|LAST_6_MONTHS")) {
+            range = "LAST_1_WEEKS";
         }
         // 校验 departmentLimit 范围
         if (departmentLimit < 1) departmentLimit = 1;
@@ -47,5 +48,15 @@ public class DashBoardController {
                         m -> (String) m.get("title")
                 ));
         return Result.success(courseMap);
+    }
+
+    @GetMapping("/dashboard/course-learning-trend")
+    public Result<CourseLearningTrendVO> getCourseLearningTrend(
+            @RequestParam Long courseId,
+            @RequestParam String range,
+            @RequestParam String granularity
+    ) {
+        CourseLearningTrendVO vo = dashboardService.getCourseLearningTrend(courseId, range, granularity);
+        return Result.success(vo);
     }
 }

@@ -14,6 +14,11 @@ public enum ErrorCode {
     NOT_FOUND(404, "资源不存在", HttpStatus.NOT_FOUND),
     INTERNAL_ERROR(500, "服务器内部错误", HttpStatus.INTERNAL_SERVER_ERROR),
 
+    // ... existing code ...
+    RATE_LIMIT_EXCEEDED(429, "请求过于频繁，请稍后再试", HttpStatus.TOO_MANY_REQUESTS),
+// ... existing code ...
+
+
     // ==================== 认证模块 (1xxx) ====================
     USERNAME_OR_PASSWORD_ERROR(1001, "用户名或密码错误", HttpStatus.BAD_REQUEST),
     USER_DISABLED(1002, "账号已被禁用", HttpStatus.FORBIDDEN),
@@ -104,6 +109,7 @@ public enum ErrorCode {
     LEARNER_COURSE_NOT_VISIBLE(6005, "课程不存在或无权学习", HttpStatus.NOT_FOUND),
     LEARNER_COURSE_NOT_PUBLISHED(6006, "课程未发布或已下架", HttpStatus.BAD_REQUEST),
     LEARNER_POINT_NOT_FOUND(6007, "课程点不存在或已停用", HttpStatus.NOT_FOUND),
+    LEARNER_VIDEO_PROGRESS_INVALID(6008, "视频进度参数不合法", HttpStatus.BAD_REQUEST),
 
     // ==================== 学习记录模块 (61xx) ====================
     LEARNER_RECORD_INVALID_ID(6101, "学习记录ID格式不合法", HttpStatus.BAD_REQUEST),

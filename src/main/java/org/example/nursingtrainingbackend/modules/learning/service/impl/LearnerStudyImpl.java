@@ -13,6 +13,7 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.mapper.PptMapper;
 import org.example.nursingtrainingbackend.modules.courseware.video.entity.Video;
 import org.example.nursingtrainingbackend.modules.courseware.video.mapper.VideoMapper;
+import org.example.nursingtrainingbackend.modules.learning.dto.VideoProgressRequest;
 import org.example.nursingtrainingbackend.modules.learning.entity.UserCoursePointProgress;
 import org.example.nursingtrainingbackend.modules.learning.entity.UserCourseProgress;
 import org.example.nursingtrainingbackend.modules.learning.entity.UserCourseResourceProgress;
@@ -24,6 +25,8 @@ import org.example.nursingtrainingbackend.modules.learning.vo.CourseStudyVO;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.SecurityUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.example.nursingtrainingbackend.modules.learning.entity.UserCourseResourceProgress;
@@ -36,14 +39,20 @@ import org.example.nursingtrainingbackend.modules.learning.service.LearnerStudy;
 
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LearnerStudyImpl implements LearnerStudy {
+
+    private static final String VIDEO_PROGRESS_KEY_PREFIX = "nursing:progress:video:";
+    private static final String VIDEO_PROGRESS_DIRTY_SET = "nursing:progress:video:dirty";
+    private static final long VIDEO_PROGRESS_TTL_HOURS = 24;
 
     private final UserMapper userMapper;
     private final CourseMapper courseMapper;
@@ -60,6 +69,7 @@ public class LearnerStudyImpl implements LearnerStudy {
     private final UserCoursePointProgressMapper userCoursePointProgressMapper;
     private final UserCourseResourceProgressMapper userCourseResourceProgressMapper;
     private final UserLearningRecordMapper userLearningRecordMapper;
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     @Transactional
@@ -110,6 +120,290 @@ public class LearnerStudyImpl implements LearnerStudy {
         vo.setTabs(tabsVO);
         vo.setNavigation(navigationVO);
         return vo;
+    }
+
+    @Override
+    public void reportVideoProgress(Long courseId, Long coursePointId, Long videoId, VideoProgressRequest request) {
+        Long userId = SecurityUtils.currentUserId();
+        validateLearner(userId);
+
+        if (!request.isEventValid()) {
+            throw new BusinessException(ErrorCode.LEARNER_VIDEO_PROGRESS_INVALID);
+        }
+
+        String cacheKey = VIDEO_PROGRESS_KEY_PREFIX + userId + ":" + coursePointId + ":" + videoId;
+        LocalDateTime now = LocalDateTime.now();
+
+        // 取历史最远播放位置
+        int currentMax = request.currentSeconds();
+        Object existingMaxObj = redisTemplate.opsForHash().get(cacheKey, "maxPositionSeconds");
+        if (existingMaxObj != null) {
+            try {
+                currentMax = Math.max(currentMax, Integer.parseInt(existingMaxObj.toString()));
+            } catch (NumberFormatException ignored) {}
+        }
+
+        // 写入 Redis Hash
+        Map<String, String> progressData = new HashMap<>();
+        progressData.put("userId", userId.toString());
+        progressData.put("courseId", courseId.toString());
+        progressData.put("coursePointId", coursePointId.toString());
+        progressData.put("videoId", videoId.toString());
+        progressData.put("currentSeconds", request.currentSeconds().toString());
+        progressData.put("maxPositionSeconds", String.valueOf(currentMax));
+        progressData.put("durationSeconds", request.durationSeconds().toString());
+        progressData.put("eventType", request.eventType() != null ? request.eventType() : "AUTO");
+        progressData.put("lastReportedAt", now.toString());
+        progressData.put("ended", request.ended().toString());
+
+        redisTemplate.opsForHash().putAll(cacheKey, progressData);
+        redisTemplate.expire(cacheKey, VIDEO_PROGRESS_TTL_HOURS, TimeUnit.HOURS);
+        redisTemplate.opsForSet().add(VIDEO_PROGRESS_DIRTY_SET, cacheKey);
+
+        // 终止事件（暂停/退出/完成）→ 即时同步 MySQL
+        boolean isTerminalEvent = request.isVideoEnded()
+                || "PAUSE".equals(request.eventType())
+                || "LEAVE".equals(request.eventType());
+
+        if (isTerminalEvent) {
+            try {
+                syncSingleProgressToMysql(cacheKey);
+            } catch (Exception e) {
+                log.error("即时同步视频进度失败, userId={}, videoId={}", userId, videoId, e);
+            }
+        }
+    }
+
+    /**
+     * 定时批量同步：每 30 秒扫描脏数据，同步到 MySQL
+     */
+    @Scheduled(fixedDelay = 30000, initialDelay = 30000)
+    public void batchSyncVideoProgress() {
+        Set<String> dirtyKeys;
+        try {
+            dirtyKeys = redisTemplate.opsForSet().members(VIDEO_PROGRESS_DIRTY_SET);
+        } catch (Exception e) {
+            log.warn("读取视频进度脏数据集合失败", e);
+            return;
+        }
+        if (dirtyKeys == null || dirtyKeys.isEmpty()) {
+            return;
+        }
+
+        for (String key : dirtyKeys) {
+            try {
+                syncSingleProgressToMysql(key);
+            } catch (Exception e) {
+                log.error("同步视频进度失败, key={}", key, e);
+            }
+        }
+    }
+
+    /**
+     * 单条同步：Redis → MySQL，并级联重算课程点/课程进度
+     */
+    private void syncSingleProgressToMysql(String cacheKey) {
+        Map<Object, Object> data = redisTemplate.opsForHash().entries(cacheKey);
+        if (data.isEmpty()) {
+            redisTemplate.opsForSet().remove(VIDEO_PROGRESS_DIRTY_SET, cacheKey);
+            return;
+        }
+
+        Long userId = Long.parseLong(data.get("userId").toString());
+        Long courseId = Long.parseLong(data.get("courseId").toString());
+        Long coursePointId = Long.parseLong(data.get("coursePointId").toString());
+        Long videoId = Long.parseLong(data.get("videoId").toString());
+        Integer currentSeconds = Integer.parseInt(data.get("currentSeconds").toString());
+        Integer maxPositionSeconds = Integer.parseInt(data.get("maxPositionSeconds").toString());
+        Integer durationSeconds = Integer.parseInt(data.get("durationSeconds").toString());
+        boolean ended = Boolean.parseBoolean(data.getOrDefault("ended", "false").toString());
+        LocalDateTime now = LocalDateTime.now();
+
+        // 查找或创建资源进度记录
+        LambdaQueryWrapper<UserCourseResourceProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserCourseResourceProgress::getUserId, userId)
+               .eq(UserCourseResourceProgress::getCourseId, courseId)
+               .eq(UserCourseResourceProgress::getCoursePointId, coursePointId)
+               .eq(UserCourseResourceProgress::getResourceType, 2)
+               .eq(UserCourseResourceProgress::getResourceId, videoId);
+        UserCourseResourceProgress progress = userCourseResourceProgressMapper.selectOne(wrapper);
+
+        if (progress == null) {
+            progress = new UserCourseResourceProgress();
+            progress.setUserId(userId);
+            progress.setCourseId(courseId);
+            progress.setCoursePointId(coursePointId);
+            progress.setResourceType(2);
+            progress.setResourceId(videoId);
+            progress.setDurationSeconds(durationSeconds);
+            progress.setStartedAt(now);
+            progress.setCreatedAt(now);
+        }
+
+        progress.setLastPositionSeconds(currentSeconds);
+        progress.setMaxPositionSeconds(Math.max(maxPositionSeconds,
+                progress.getMaxPositionSeconds() != null ? progress.getMaxPositionSeconds() : 0));
+        progress.setUpdatedAt(now);
+
+        // 计算百分比
+        if (durationSeconds > 0) {
+            BigDecimal percent = BigDecimal.valueOf(Math.min(maxPositionSeconds, durationSeconds))
+                    .multiply(BigDecimal.valueOf(100))
+                    .divide(BigDecimal.valueOf(durationSeconds), 2, RoundingMode.HALF_UP);
+            progress.setProgressPercent(percent);
+        }
+
+        // 判断完成：ended=true 或 最远位置 >= 总时长-2秒
+        if (ended || (durationSeconds > 0 && maxPositionSeconds >= durationSeconds - 2)) {
+            progress.setStatus(2);
+            progress.setCompletedAt(now);
+            progress.setProgressPercent(BigDecimal.valueOf(100));
+        } else {
+            progress.setStatus(1);
+        }
+
+        if (progress.getId() == null) {
+            userCourseResourceProgressMapper.insert(progress);
+        } else {
+            userCourseResourceProgressMapper.updateById(progress);
+        }
+
+        // 级联重算课程点进度 → 课程进度
+        recalculatePointProgress(userId, courseId, coursePointId, now);
+        recalculateCourseProgress(userId, courseId, now);
+
+        // 清除 Redis 缓存
+        redisTemplate.delete(cacheKey);
+        redisTemplate.opsForSet().remove(VIDEO_PROGRESS_DIRTY_SET, cacheKey);
+    }
+
+    /**
+     * 级联重算课程点进度
+     */
+    private void recalculatePointProgress(Long userId, Long courseId, Long pointId, LocalDateTime now) {
+        List<UserCourseResourceProgress> pointResources = userCourseResourceProgressMapper.selectList(
+                new LambdaQueryWrapper<UserCourseResourceProgress>()
+                        .eq(UserCourseResourceProgress::getUserId, userId)
+                        .eq(UserCourseResourceProgress::getCoursePointId, pointId));
+
+        boolean allCompleted = !pointResources.isEmpty() &&
+                pointResources.stream().allMatch(r -> r.getStatus() == 2);
+
+        UserCoursePointProgress pointProgress = userCoursePointProgressMapper.selectOne(
+                new LambdaQueryWrapper<UserCoursePointProgress>()
+                        .eq(UserCoursePointProgress::getUserId, userId)
+                        .eq(UserCoursePointProgress::getCoursePointId, pointId));
+
+        if (pointProgress == null) {
+            pointProgress = new UserCoursePointProgress();
+            pointProgress.setUserId(userId);
+            pointProgress.setCourseId(courseId);
+            pointProgress.setCoursePointId(pointId);
+            pointProgress.setStartedAt(now);
+            pointProgress.setCreatedAt(now);
+        }
+
+        boolean wasCompleted = pointProgress.getStatus() != null && pointProgress.getStatus() == 2;
+
+        if (allCompleted) {
+            pointProgress.setStatus(2);
+            pointProgress.setCompletedAt(now);
+        } else {
+            pointProgress.setStatus(1);
+            if (pointProgress.getCompletedAt() != null) pointProgress.setCompletedAt(null);
+        }
+        pointProgress.setUpdatedAt(now);
+
+        if (pointProgress.getId() == null) {
+            userCoursePointProgressMapper.insert(pointProgress);
+        } else {
+            userCoursePointProgressMapper.updateById(pointProgress);
+        }
+
+        if (allCompleted && !wasCompleted) {
+            try {
+                CoursePoint point = coursePointMapper.selectById(pointId);
+                String title = "完成了课程点《" + (point != null ? point.getTitle() : "") + "》";
+                insertLearningRecord(userId, courseId, pointId, 4, null, null, title, now);
+            } catch (Exception e) {
+                log.error("写入课程点完成记录失败, userId={}, pointId={}", userId, pointId, e);
+            }
+        }
+    }
+
+    /**
+     * 级联重算课程进度
+     */
+    private void recalculateCourseProgress(Long userId, Long courseId, LocalDateTime now) {
+        List<UserCoursePointProgress> allPointProgress = userCoursePointProgressMapper.selectList(
+                new LambdaQueryWrapper<UserCoursePointProgress>()
+                        .eq(UserCoursePointProgress::getUserId, userId)
+                        .eq(UserCoursePointProgress::getCourseId, courseId));
+
+        long totalPoints = coursePointMapper.selectCount(
+                new LambdaQueryWrapper<CoursePoint>()
+                        .eq(CoursePoint::getCourseId, courseId)
+                        .eq(CoursePoint::getStatus, 1)
+                        .isNull(CoursePoint::getDeletedAt));
+
+        long completedPoints = allPointProgress.stream().filter(p -> p.getStatus() == 2).count();
+        long startedPoints = allPointProgress.stream().filter(p -> p.getStatus() >= 1).count();
+
+        UserCourseProgress courseProgress = userCourseProgressMapper.selectOne(
+                new LambdaQueryWrapper<UserCourseProgress>()
+                        .eq(UserCourseProgress::getUserId, userId)
+                        .eq(UserCourseProgress::getCourseId, courseId));
+
+        if (courseProgress == null) {
+            if (startedPoints > 0) {
+                courseProgress = new UserCourseProgress();
+                courseProgress.setUserId(userId);
+                courseProgress.setCourseId(courseId);
+                courseProgress.setStartedAt(now);
+                courseProgress.setCreatedAt(now);
+            } else {
+                return;
+            }
+        }
+
+        boolean wasCompleted = courseProgress.getStatus() != null && courseProgress.getStatus() == 2;
+
+        if (totalPoints > 0 && completedPoints == totalPoints) {
+            courseProgress.setStatus(2);
+            courseProgress.setCompletedAt(now);
+            courseProgress.setProgressPercent(BigDecimal.valueOf(100));
+        } else if (startedPoints > 0) {
+            courseProgress.setStatus(1);
+            if (totalPoints > 0) {
+                BigDecimal percent = BigDecimal.valueOf(completedPoints)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(BigDecimal.valueOf(totalPoints), 2, RoundingMode.HALF_UP);
+                courseProgress.setProgressPercent(percent);
+            }
+            if (courseProgress.getCompletedAt() != null) courseProgress.setCompletedAt(null);
+        } else {
+            courseProgress.setStatus(0);
+            courseProgress.setProgressPercent(BigDecimal.ZERO);
+            courseProgress.setStartedAt(null);
+            courseProgress.setCompletedAt(null);
+        }
+
+        courseProgress.setUpdatedAt(now);
+        if (courseProgress.getId() == null) {
+            userCourseProgressMapper.insert(courseProgress);
+        } else {
+            userCourseProgressMapper.updateById(courseProgress);
+        }
+
+        if (totalPoints > 0 && completedPoints == totalPoints && !wasCompleted) {
+            try {
+                Course course = courseMapper.selectById(courseId);
+                String title = "完成了课程《" + (course != null ? course.getTitle() : "") + "》";
+                insertLearningRecord(userId, courseId, null, 5, null, null, title, now);
+            } catch (Exception e) {
+                log.error("写入课程完成记录失败, userId={}, courseId={}", userId, courseId, e);
+            }
+        }
     }
 
     /**

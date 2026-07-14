@@ -27,7 +27,11 @@ import org.example.nursingtrainingbackend.modules.learning.vo.*;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.SecurityUtils;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -35,6 +39,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -45,6 +50,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LearnerHomeServiceImpl implements LearnerHomeService {
 
+    private static final String LEARNER_HOME_CACHE_PREFIX = "nursing:learner:home:v1:";
+    private static final String DEPARTMENT_VISIBLE_COURSES_CACHE_PREFIX = "nursing:department:visible_courses:v1:";
+    private static final long LEARNER_HOME_CACHE_TTL_SECONDS = 60; // 1分钟，进度实时性要求高
+    private static final long DEPARTMENT_VISIBLE_COURSES_CACHE_TTL_MINUTES = 5; // 5分钟，公共数据
+
     private final UserMapper userMapper;
     private final CourseMapper courseMapper;
     private final CategoryMapper categoryMapper;
@@ -54,41 +64,59 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
     private final UserCoursePointProgressMapper userCoursePointProgressMapper;
     private final UserCourseResourceProgressMapper userCourseResourceProgressMapper;
 
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
     @Override
     public HomePageVO getHomePage() {
         Long userId = SecurityUtils.currentUserId();
-        
+        String cacheKey = LEARNER_HOME_CACHE_PREFIX + userId;
+        String cachedHomePage = redisTemplate.opsForValue().get(cacheKey); // 缓存未命中，查询数据库
+        HomePageVO vo = buildHomePageFromDb(userId);
+
+        // 写入缓存
+        try {
+            String json = objectMapper.writeValueAsString(vo);
+            redisTemplate.opsForValue().set(cacheKey, json, LEARNER_HOME_CACHE_TTL_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.warn("写入学员首页缓存失败, userId={}", userId, e);
+        }
+
+        return vo;
+    }
+
+    private HomePageVO buildHomePageFromDb(Long userId) {
         // 1. 验证学员状态
         User user = validateLearner(userId);
-        
+
         // 2. 获取学员可见的课程ID列表
         List<Long> visibleCourseIds = getVisibleCourseIds(user.getDeptId());
-        
+
         if (visibleCourseIds.isEmpty()) {
             return buildEmptyHomePage();
         }
-        
+
         // 3. 构建首页数据
         HomePageVO homePageVO = new HomePageVO();
-        
+
         // 3.1 课程状态统计
         homePageVO.setCourseStats(buildCourseStats(visibleCourseIds, userId));
-        
+
         // 3.2 推荐课程（最多4条）
         homePageVO.setRecommendedCourses(getRecommendedCoursesForHome(visibleCourseIds, userId, 4));
-        
+
         // 3.3 继续学习（最多4条）
         homePageVO.setContinueCourses(getContinueCoursesForHome(userId, 4));
-        
+
         // 3.4 进度概览
         homePageVO.setProgressOverview(buildProgressOverview(visibleCourseIds, userId));
-        
+
         // 3.5 最近学习记录（最多5条）
         homePageVO.setRecentRecords(getRecentRecordsForHome(userId, 5));
-        
+
         // 3.6 学习日历
         homePageVO.setCalendar(buildCalendar(userId));
-        
+
         return homePageVO;
     }
 
@@ -198,6 +226,20 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
      * 条件：course.status=1, course.deletedAt IS NULL, course_department.department_id=学员部门
      */
     private List<Long> getVisibleCourseIds(Long deptId) {
+        String cacheKey = DEPARTMENT_VISIBLE_COURSES_CACHE_PREFIX + deptId;
+
+        // 尝试从缓存获取
+        try {
+            String cachedJson = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedJson != null && !cachedJson.isBlank()) {
+                @SuppressWarnings("unchecked")
+                List<Long> cachedIds = objectMapper.readValue(cachedJson, new TypeReference<List<Long>>() {});
+                return cachedIds;
+            }
+        } catch (Exception e) {
+            log.warn("读取部门可见课程缓存失败, deptId={}", deptId, e);
+        }
+
         // 查询该部门可学习的课程ID
         LambdaQueryWrapper<CourseDepartment> cdWrapper = new LambdaQueryWrapper<>();
         cdWrapper.eq(CourseDepartment::getDepartmentId, deptId);
@@ -216,10 +258,18 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         courseWrapper.in(Course::getId, courseIds)
                      .eq(Course::getStatus, 1) // PUBLISHED
                      .isNull(Course::getDeletedAt);
-        
-        return courseMapper.selectList(courseWrapper).stream()
+        courseIds=courseMapper.selectList(courseWrapper).stream()
                 .map(Course::getId)
                 .collect(Collectors.toList());
+        try {
+            String json = objectMapper.writeValueAsString(courseIds);
+            redisTemplate.opsForValue().set(cacheKey, json, DEPARTMENT_VISIBLE_COURSES_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("写入部门可见课程缓存失败, deptId={}", deptId, e);
+        }
+
+        return courseIds;
+
     }
 
     /**

@@ -2,6 +2,7 @@ package org.example.nursingtrainingbackend.modules.courseware.video.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.nursingtrainingbackend.common.annotation.RateLimit;
 import org.example.nursingtrainingbackend.common.page.PageResult;
 import org.example.nursingtrainingbackend.common.result.Result;
 import org.example.nursingtrainingbackend.modules.courseware.video.dto.VideoBatchRequest;
@@ -109,6 +110,7 @@ public class VideoController {
 
     @GetMapping("/{id}/play-url")
     @PreAuthorize("hasRole('ADMIN')")
+    @RateLimit(key = "video-play", time = 300, count = 20, limitType = RateLimit.LimitType.USER)
     public Result<VideoPlayUrlVO> getVideoPlayUrl(
             @PathVariable Long id,
             @RequestParam(required = false, defaultValue = "600") Integer expiresIn) {

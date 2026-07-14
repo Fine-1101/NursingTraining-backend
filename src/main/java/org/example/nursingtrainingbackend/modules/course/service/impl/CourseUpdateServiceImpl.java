@@ -1,6 +1,7 @@
 package org.example.nursingtrainingbackend.modules.course.service.impl;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import org.example.nursingtrainingbackend.common.event.CacheEvictionEvent;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
 import org.example.nursingtrainingbackend.modules.category.entity.Category;
@@ -22,6 +23,7 @@ import org.example.nursingtrainingbackend.modules.courseware.video.mapper.VideoM
 import org.example.nursingtrainingbackend.modules.tag.entity.Tag;
 import org.example.nursingtrainingbackend.modules.tag.mapper.TagMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,6 +61,8 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
     private VideoMapper videoMapper;
     @Autowired
     private PptMapper pptMapper;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -87,6 +91,9 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
         }
         course.setUpdatedAt(LocalDateTime.now());
         courseMapper.updateById(course);
+
+        // 课程基础信息变更，清除课程结构缓存
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
 
         // 完整替换标签关系：先删后插
         courseTagMapper.delete(Wrappers.<CourseTag>lambdaQuery()
@@ -182,6 +189,9 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
 
         course.setUpdatedAt(now);
         courseMapper.updateById(course);
+
+        // 课程状态变更，清除课程结构缓存
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
 
         // 5. 构造响应
         CourseStatusVO vo = new CourseStatusVO();

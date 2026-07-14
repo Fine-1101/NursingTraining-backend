@@ -32,6 +32,12 @@ public interface DashboardMapper {
     /** 查询某门课程按月的学习人数与完成率趋势 */
     List<CourseTrendRow> selectCourseMonthlyTrend(@Param("courseId") Long courseId);
 
+    /** 查询某门课程在指定日期范围内的按月学习人数与完成率趋势 */
+    List<CourseTrendRow> selectCourseTrendByRange(@Param("courseId") Long courseId,
+                                                   @Param("startDate") String startDate,
+                                                   @Param("endDate") String endDate,
+                                                   @Param("granularity") String granularity);
+
     /** 科室完成率排行 */
     List<DepartmentRankRow> selectDepartmentRanking(@Param("limit") int limit);
 

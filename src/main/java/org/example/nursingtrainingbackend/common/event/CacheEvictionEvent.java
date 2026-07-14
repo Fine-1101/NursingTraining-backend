@@ -12,6 +12,12 @@ public class CacheEvictionEvent extends ApplicationEvent {
         STUDENT_DEPT_DISTRIBUTION,
         TAG_OVERVIEW,
         TAG_STATISTICS,
+        LEARNER_HOME,
+        DEPARTMENT_VISIBLE_COURSES,
+        LEARNER_RECORD_STATS,
+        LEARNER_RANKINGS,
+        COURSE_STUDY,
+        VIDEO_PLAY_URL,
         ALL
     }
 

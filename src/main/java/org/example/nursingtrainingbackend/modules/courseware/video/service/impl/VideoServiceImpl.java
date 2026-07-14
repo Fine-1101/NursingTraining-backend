@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import org.example.nursingtrainingbackend.common.event.CacheEvictionEvent;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.page.PageResult;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
@@ -21,6 +22,8 @@ import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.AuthenticatedUser;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -34,6 +37,8 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 
@@ -43,11 +48,14 @@ import java.util.List;
 import java.net.URL;
 import java.util.Date;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class VideoServiceImpl implements VideoService {
+
+    private static final String VIDEO_PLAY_URL_CACHE_PREFIX = "nursing:video:play-url:v1:";
 
     private final VideoMapper videoMapper;
     private final UserMapper userMapper;
@@ -56,14 +64,12 @@ public class VideoServiceImpl implements VideoService {
     private final OssConfig ossConfig;
     private final CoursePointVideoMapper coursePointVideoMapper;
     private final FileService fileService;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
+
     @Override
     public VideoPlayUrlVO getVideoPlayUrl(Long id, Integer expiresIn) {
-        LambdaQueryWrapper<Video> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Video::getId, id).isNull(Video::getDeletedAt);
-        Video video = videoMapper.selectOne(wrapper);
-        if (video == null) {
-            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
-        }
 
         if (expiresIn == null || expiresIn < 60) {
             expiresIn = 600;
@@ -71,6 +77,23 @@ public class VideoServiceImpl implements VideoService {
         if (expiresIn > 3600) {
             expiresIn = 3600;
         }
+
+        String cacheKey = VIDEO_PLAY_URL_CACHE_PREFIX + id;
+        try {
+            String cachedJson = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedJson != null && !cachedJson.isBlank()) {
+                return objectMapper.readValue(cachedJson, new TypeReference<VideoPlayUrlVO>() {});
+            }
+        } catch (Exception e) {
+            log.warn("读取视频播放URL缓存失败, videoId={}", id, e);
+        }
+        LambdaQueryWrapper<Video> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Video::getId, id).isNull(Video::getDeletedAt);
+        Video video = videoMapper.selectOne(wrapper);
+        if (video == null) {
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
+        }
+
 
         String key = extractOssKey(video.getVideoUrl());
 
@@ -91,6 +114,15 @@ public class VideoServiceImpl implements VideoService {
                 java.time.Instant.ofEpochMilli(expiration.getTime()),
                 java.time.ZoneId.of("Asia/Shanghai")));
 
+        long cacheTtl = expiresIn - 30;
+        if (cacheTtl > 0) {
+            try {
+                String json = objectMapper.writeValueAsString(vo);
+                redisTemplate.opsForValue().set(cacheKey, json, cacheTtl, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.warn("写入视频播放URL缓存失败, videoId={}", id, e);
+            }
+        }
         return vo;
     }
     @Override
@@ -440,6 +472,7 @@ public class VideoServiceImpl implements VideoService {
 
         videoMapper.update(null, updateWrapper);
 
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.VIDEO_PLAY_URL));
         VideoStatusUpdateResponseVO response = new VideoStatusUpdateResponseVO();
         response.setId(video.getId());
         response.setStatus(convertCodeToStatus(targetStatusCode));
@@ -492,6 +525,8 @@ public class VideoServiceImpl implements VideoService {
                 .set(Video::getUpdatedAt, now);
 
         videoMapper.update(null, updateWrapper);
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.VIDEO_PLAY_URL));
+
 
         VideoUpdateResponseVO response = new VideoUpdateResponseVO();
         response.setId(video.getId());
@@ -529,6 +564,8 @@ public class VideoServiceImpl implements VideoService {
         updateWrapper.eq(Video::getId, id)
                 .set(Video::getDeletedAt, LocalDateTime.now());
         videoMapper.update(null, updateWrapper);
+
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.VIDEO_PLAY_URL));
 
         String videoUrl = video.getVideoUrl();
         String coverUrl = video.getCoverUrl();
@@ -618,6 +655,8 @@ public class VideoServiceImpl implements VideoService {
                 .set(Video::getUpdatedAt, now);
 
         int updatedRows = videoMapper.update(null, updateWrapper);
+
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.VIDEO_PLAY_URL));
 
         VideoBatchPublishResponseVO response = new VideoBatchPublishResponseVO();
         response.setRequestedCount(ids.size());

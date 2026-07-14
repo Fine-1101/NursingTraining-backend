@@ -3,6 +3,8 @@ package org.example.nursingtrainingbackend.modules.dashboard.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.nursingtrainingbackend.common.exception.BusinessException;
+import org.example.nursingtrainingbackend.common.result.ErrorCode;
 import org.example.nursingtrainingbackend.modules.course.entity.Course;
 import org.example.nursingtrainingbackend.modules.course.mapper.CourseMapper;
 import org.example.nursingtrainingbackend.modules.dashboard.dto.CourseTrendRow;
@@ -11,6 +13,7 @@ import org.example.nursingtrainingbackend.modules.dashboard.dto.StatusCountRow;
 import org.example.nursingtrainingbackend.modules.dashboard.dto.TrendRow;
 import org.example.nursingtrainingbackend.modules.dashboard.mapper.DashboardMapper;
 import org.example.nursingtrainingbackend.modules.dashboard.service.DashboardService;
+import org.example.nursingtrainingbackend.modules.dashboard.vo.CourseLearningTrendVO;
 import org.example.nursingtrainingbackend.modules.dashboard.vo.DashboardVO;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -83,6 +86,112 @@ public class DashboardServiceImpl implements DashboardService {
             }
         } catch (Exception e) {
             log.warn("清除仪表盘缓存失败");
+        }
+    }
+
+    @Override
+    public CourseLearningTrendVO getCourseLearningTrend(Long courseId, String range, String granularity) {
+        String normalizedRange = range == null ? "" : range.trim().toUpperCase();
+        String normalizedGranularity = granularity == null ? "" : granularity.trim().toUpperCase();
+        validateCourseTrendParameters(courseId, normalizedRange, normalizedGranularity);
+
+        Course course = courseMapper.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+
+        LocalDate today = LocalDate.now();
+        List<PeriodWindow> timeline = buildCourseTrendTimeline(today, normalizedGranularity);
+        LocalDate start = timeline.getFirst().start();
+        LocalDate endExclusive = timeline.getLast().endInclusive().plusDays(1);
+
+        List<CourseTrendRow> rawData = dashboardMapper.selectCourseTrendByRange(
+                courseId,
+                start.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                endExclusive.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                normalizedGranularity);
+
+        Map<String, CourseTrendRow> dataByPeriod = rawData.stream()
+                .collect(Collectors.toMap(CourseTrendRow::getPeriodStart, row -> row, (left, right) -> left));
+        List<CourseLearningTrendVO.Point> points = timeline.stream()
+                .map(period -> toCourseTrendPoint(period, dataByPeriod.get(period.key())))
+                .toList();
+
+        return CourseLearningTrendVO.builder()
+                .courseId(courseId)
+                .courseTitle(course.getTitle())
+                .range(normalizedRange)
+                .granularity(normalizedGranularity)
+                .points(points)
+                .build();
+    }
+
+    private void validateCourseTrendParameters(Long courseId, String range, String granularity) {
+        if (courseId == null || courseId <= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "courseId 必须为正整数");
+        }
+        Map<String, String> expectedGranularity = Map.of(
+                "LAST_1_WEEKS", "DAY",
+                "LAST_1_MONTHS", "WEEK",
+                "LAST_6_MONTHS", "MONTH");
+        if (!expectedGranularity.containsKey(range)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "range 仅支持 LAST_1_WEEKS、LAST_1_MONTHS、LAST_6_MONTHS");
+        }
+        if (!expectedGranularity.get(range).equals(granularity)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST,
+                    "granularity 与 range 不匹配，" + range + " 应使用 " + expectedGranularity.get(range));
+        }
+    }
+
+    static List<PeriodWindow> buildCourseTrendTimeline(LocalDate today, String granularity) {
+        List<PeriodWindow> periods = new ArrayList<>();
+        if ("DAY".equals(granularity)) {
+            LocalDate start = today.minusDays(6);
+            for (int i = 0; i < 7; i++) {
+                LocalDate date = start.plusDays(i);
+                periods.add(new PeriodWindow(date, date, date.format(DateTimeFormatter.ofPattern("MM-dd"))));
+            }
+        } else if ("WEEK".equals(granularity)) {
+            LocalDate start = today.minusDays(27);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
+            for (int i = 0; i < 4; i++) {
+                LocalDate weekStart = start.plusWeeks(i);
+                LocalDate weekEnd = weekStart.plusDays(6);
+                periods.add(new PeriodWindow(weekStart, weekEnd,
+                        weekStart.format(formatter) + "~" + weekEnd.format(formatter)));
+            }
+        } else {
+            LocalDate start = today.withDayOfMonth(1).minusMonths(5);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM");
+            for (int i = 0; i < 6; i++) {
+                LocalDate monthStart = start.plusMonths(i);
+                periods.add(new PeriodWindow(monthStart, monthStart.withDayOfMonth(monthStart.lengthOfMonth()),
+                        monthStart.format(formatter)));
+            }
+        }
+        return periods;
+    }
+
+    private CourseLearningTrendVO.Point toCourseTrendPoint(PeriodWindow period, CourseTrendRow row) {
+        int learnerCount = row == null ? 0 : nullToZero(row.getLearnerCount());
+        int completedCount = row == null ? 0 : nullToZero(row.getCompletedLearnerCount());
+        BigDecimal completionRate = learnerCount == 0
+                ? BigDecimal.ZERO
+                : BigDecimal.valueOf(completedCount)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(BigDecimal.valueOf(learnerCount), 1, RoundingMode.HALF_UP);
+        return CourseLearningTrendVO.Point.builder()
+                .label(period.label())
+                .date(period.key())
+                .learnerCount(learnerCount)
+                .completionRate(completionRate)
+                .build();
+    }
+
+    record PeriodWindow(LocalDate start, LocalDate endInclusive, String label) {
+        String key() {
+            return start.format(DateTimeFormatter.ISO_LOCAL_DATE);
         }
     }
 

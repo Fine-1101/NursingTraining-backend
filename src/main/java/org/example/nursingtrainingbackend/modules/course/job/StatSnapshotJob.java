@@ -2,6 +2,7 @@ package org.example.nursingtrainingbackend.modules.course.job;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.nursingtrainingbackend.common.annotation.DistributedLock;
 import org.example.nursingtrainingbackend.modules.course.entity.Course;
 import org.example.nursingtrainingbackend.modules.course.entity.CourseStatSnapshot;
 import org.example.nursingtrainingbackend.modules.course.mapper.CourseMapper;
@@ -33,6 +34,7 @@ public class StatSnapshotJob {
     private PptStatSnapShotMapper pptStatSnapshotMapper;
 
     @Scheduled(cron = "0 10 0 * * ?")
+    @DistributedLock(key = "job:daily_snapshot", leaseTime = 300, waitTime = 60)
     @Transactional(rollbackFor = Exception.class)
     public void generateDailySnapshot() {
         LocalDate today = LocalDate.now();

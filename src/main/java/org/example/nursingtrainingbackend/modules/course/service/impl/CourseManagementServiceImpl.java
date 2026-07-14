@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
+import org.example.nursingtrainingbackend.common.event.CacheEvictionEvent;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.page.PageResult;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
@@ -28,6 +29,7 @@ import org.example.nursingtrainingbackend.modules.courseware.video.mapper.VideoM
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -87,6 +89,9 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     public PageResult<CourseItemVO> getCourses(GetCourseDTO dto) {
@@ -427,6 +432,9 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
         courseMapper.updateById(course);
 
+        // 课程状态变更，清除课程结构缓存
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
+
         // 7. 构造响应
         CourseStatusVO vo = new CourseStatusVO();
         vo.setCourseId(course.getId());
@@ -490,6 +498,9 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
         // 7. 软删除课程
         courseMapper.deleteById(courseId);
+
+        // 课程删除，清除课程结构缓存
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
     }
 
     /**

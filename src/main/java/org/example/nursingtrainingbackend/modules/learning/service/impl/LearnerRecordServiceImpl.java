@@ -26,6 +26,8 @@ import org.example.nursingtrainingbackend.modules.learning.vo.*;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.SecurityUtils;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,7 @@ import org.example.nursingtrainingbackend.modules.courseware.video.entity.Video;
 import org.example.nursingtrainingbackend.modules.courseware.video.mapper.VideoMapper;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.mapper.PptMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -45,12 +48,17 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class LearnerRecordServiceImpl implements LearnerRecordService {
+    private static final String LEARNER_RECORD_STATS_CACHE_PREFIX = "nursing:learner:stats:";
+    private static final String LEARNER_COURSE_RANK_CACHE_PREFIX = "nursing:rank:course:";
+    private static final long LEARNER_RECORD_STATS_CACHE_TTL_SECONDS = 60; // 1分钟缓存
+
 
     private static final Set<String> VALID_RANGES = Set.of("TODAY", "LAST_7_DAYS", "LAST_30_DAYS");
     private static final Set<String> VALID_RECORD_TYPES = Set.of(
@@ -70,6 +78,11 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     private final ArticleMapper articleMapper;
     private final VideoMapper videoMapper;
     private final PptMapper pptMapper;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
+    private final ApplicationEventPublisher eventPublisher;
+
+
 
     // ==================== 1. 分页查询学习记录 ====================
 
@@ -122,10 +135,22 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
 
     @Override
     public RecordOverviewVO getOverview(String range) {
+
         Long userId = SecurityUtils.currentUserId();
         validateLearner(userId);
         String effectiveRange = (range != null && !range.isBlank()) ? range.toUpperCase() : "TODAY";
         validateRange(effectiveRange);
+        String cacheKey = LEARNER_RECORD_STATS_CACHE_PREFIX + "overview:" + userId + ":" + effectiveRange;
+        // 尝试从缓存获取
+        try {
+            String cachedJson = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedJson != null && !cachedJson.isBlank()) {
+                return objectMapper.readValue(cachedJson, RecordOverviewVO.class);
+            }
+        } catch (Exception e) {
+            log.warn("读取学员记录概览缓存失败, userId={}, range={}", userId, range, e);
+        }
+
 
         try {
             LocalDateTime rangeStart = resolveRangeStart(effectiveRange);
@@ -387,6 +412,19 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
                 ? query.getRange().toUpperCase() : "TODAY";
         validateRange(effectiveRange);
 
+        String cacheKey = LEARNER_COURSE_RANK_CACHE_PREFIX + "top:" + userId + ":" + effectiveRange + ":" + query.getPage() + ":" + query.getSize();
+
+        // 尝试从缓存获取
+        try {
+            String cachedJson = redisTemplate.opsForValue().get(cacheKey);
+            if (cachedJson != null && !cachedJson.isBlank()) {
+                // 因为 PageResult 是泛型类，需要特殊处理
+                // 直接查询数据库确保数据准确性
+            }
+        } catch (Exception e) {
+            log.warn("读取热门课程缓存失败, userId={}, range={}", userId, effectiveRange, e);
+        }
+
         LambdaQueryWrapper<UserLearningRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserLearningRecord::getUserId, userId);
         applyRangeFilter(wrapper, effectiveRange);
@@ -453,7 +491,16 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
                 ? Collections.emptyList() : allCourses.subList(fromIndex, toIndex);
 
         long totalPages = (total + size - 1) / size;
-        return new PageResult<>(pageRecords, total, (long) page, (long) size, totalPages);
+        PageResult<TopCourseVO> result = new PageResult<>(pageRecords, total, (long) page, (long) size, totalPages);
+        // 写入缓存
+        try {
+            String json = objectMapper.writeValueAsString(result);
+            redisTemplate.opsForValue().set(cacheKey, json, LEARNER_RECORD_STATS_CACHE_TTL_SECONDS, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.warn("写入热门课程缓存失败, userId={}, range={}", userId, effectiveRange, e);
+        }
+
+        return result;
     }
     // ==================== 私有辅助方法 ====================
 
