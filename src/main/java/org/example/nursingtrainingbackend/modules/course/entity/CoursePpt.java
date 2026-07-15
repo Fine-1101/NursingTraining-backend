@@ -8,7 +8,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("course_ppt")
+@TableName("course_point_ppt")
 public class CoursePpt {
 
     @TableId(type = IdType.AUTO)

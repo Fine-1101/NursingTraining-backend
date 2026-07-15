@@ -5,19 +5,20 @@ import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.example.nursingtrainingbackend.modules.course.entity.CoursePointPpt;
 import org.example.nursingtrainingbackend.modules.course.entity.CoursePpt;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-public interface CoursePptMapper extends BaseMapper<CoursePpt> {
+public interface CoursePptMapper extends BaseMapper<CoursePointPpt> {
 
     @Select({
-            "SELECT ppt_id, COUNT(DISTINCT course_id) cnt FROM (",
-            "  SELECT ppt_id, course_id FROM course_ppt",
+            "SELECT ppt_id, COUNT(DISTINCT course_point_id) cnt FROM (",
+            "  SELECT ppt_id, course_point_id FROM course_point_ppt",
             "  UNION",
-            "  SELECT cpp.ppt_id, cp.course_id",
+            "  SELECT cpp.ppt_id, cp.course_point_id",
             "    FROM course_point_ppt cpp",
             "    INNER JOIN course_point cp ON cp.id = cpp.course_point_id",
             "    WHERE cp.deleted_at IS NULL",
@@ -28,7 +29,7 @@ public interface CoursePptMapper extends BaseMapper<CoursePpt> {
 
     @Insert({
             "<script>",
-            "INSERT IGNORE INTO course_ppt (ppt_id, course_id, created_at) VALUES ",
+            "INSERT IGNORE INTO course_point_ppt (ppt_id, course_point_id, created_at) VALUES ",
             "<foreach collection='courseIds' item='cid' separator=','>",
             "(#{pptId}, #{cid}, #{createdAt})",
             "</foreach>",
@@ -40,7 +41,7 @@ public interface CoursePptMapper extends BaseMapper<CoursePpt> {
 
     @Delete({
             "<script>",
-            "DELETE FROM course_ppt WHERE ppt_id = #{pptId} AND course_id IN ",
+            "DELETE FROM course_point_ppt WHERE ppt_id = #{pptId} AND course_point_id IN ",
             "<foreach collection='courseIds' item='cid' open='(' separator=',' close=')'>",
             "#{cid}",
             "</foreach>",
@@ -51,9 +52,9 @@ public interface CoursePptMapper extends BaseMapper<CoursePpt> {
 
     @Select({
             "SELECT COUNT(DISTINCT course_id) FROM (",
-            "  SELECT course_id FROM course_ppt WHERE ppt_id = #{pptId}",
+            "  SELECT course_point_id FROM course_point_ppt WHERE ppt_id = #{pptId}",
             "  UNION",
-            "  SELECT cp.course_id",
+            "  SELECT cp.course_point_id",
             "    FROM course_point_ppt cpp",
             "    INNER JOIN course_point cp ON cp.id = cpp.course_point_id",
             "    WHERE cpp.ppt_id = #{pptId} AND cp.deleted_at IS NULL",

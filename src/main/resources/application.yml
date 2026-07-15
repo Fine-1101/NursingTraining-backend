@@ -49,3 +49,9 @@ app:
     access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
     region-id: ${VOD_REGION_ID:cn-shanghai}
     transcode-template-group-id: ${VOD_TRANSCODE_TEMPLATE_GROUP_ID:}
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+    access-key-id: ${ALIYUN_ACCESS_KEY_ID:}
+    access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:shared-doc-backend}
+    domain: ${ALIYUN_OSS_DOMAIN:}
