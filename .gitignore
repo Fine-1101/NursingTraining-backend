@@ -38,3 +38,5 @@ build/
 *.pid
 backend_*.log
 spring-boot-run*.log
+
+src/main/resources/application-local.yml
