@@ -33,6 +33,33 @@ build/
 .vscode/
 /docs
 
+### Frontend submodule ###
+frontend/
+user-front/
+
+### Temporary test files ###
+GeneratePassword.java
+create_test_courses*.sql
+test_data.sql
+insert_assessment_test_data.sql
+add_questions_for_all_categories.sql
+check-records.sql
+insert_test_course.sql
+publish_all_assessments.sql
+test_progress.html
+**/DebugController.java
+**/PasswordGeneratorTest.java
+register-result.json
+frontend_diff.txt
+run-study-tests.ps1
+test-study-inline.ps1
+debug_error.log
+backend_error.log
+backend_startup*.log
+uploads/
+user-front/.env
+frontend/.env
+
 ### Log files ###
 *.log
 *.pid

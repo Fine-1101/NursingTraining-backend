@@ -1,5 +1,7 @@
 package org.example.nursingtrainingbackend.modules.assessment.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
@@ -13,6 +15,7 @@ import java.time.LocalDateTime;
 public class AssessmentQuestionCourse {
 
     /** 题目ID */
+    @TableId(type = IdType.INPUT)
     private Long questionId;
 
     /** 指定可用课程ID */

@@ -2,6 +2,7 @@ package org.example.nursingtrainingbackend.config;
 
 import org.example.nursingtrainingbackend.config.properties.LearningReportProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import java.net.http.HttpClient;
  */
 @Configuration
 @EnableConfigurationProperties(LearningReportProperties.class)
+@ConditionalOnProperty(prefix = "app.learning-report", name = "enabled", havingValue = "true")
 public class LearningReportConfig {
 
     /**

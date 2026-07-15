@@ -122,7 +122,7 @@ public class LearningReportTaskService {
             /*
              * 7. AI未启用时直接生成规则报告。
              */
-            if (!properties.ai().enabled()) {
+            if (properties.ai() == null || !properties.ai().enabled()) {
                 GeneratedLearningReport ruleReport =
                         ruleBasedReportService.generate(
                                 snapshot
