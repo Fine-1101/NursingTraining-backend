@@ -6,16 +6,23 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.example.nursingtrainingbackend.modules.assessment.entity.AssessmentAttempt;
+import org.example.nursingtrainingbackend.modules.assessment.dto.LearnerResultHistoryQuery;
 import org.example.nursingtrainingbackend.modules.assessment.vo.ResultDetailVO;
 import org.example.nursingtrainingbackend.modules.assessment.vo.ResultExportRowVO;
 import org.example.nursingtrainingbackend.modules.assessment.vo.ResultItemVO;
 import org.example.nursingtrainingbackend.modules.assessment.vo.ResultSummaryVO;
+import org.example.nursingtrainingbackend.modules.assessment.vo.learner.AssessmentResultHistoryItemVO;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
 public interface AssessmentAttemptMapper extends BaseMapper<AssessmentAttempt> {
+
+    IPage<AssessmentResultHistoryItemVO> selectLearnerResultHistory(
+            Page<AssessmentResultHistoryItemVO> page,
+            @Param("userId") Long userId,
+            @Param("query") LearnerResultHistoryQuery query);
 
     IPage<ResultItemVO> selectResultPage(Page<ResultItemVO> page,
                                           @Param("assessmentId") Long assessmentId,

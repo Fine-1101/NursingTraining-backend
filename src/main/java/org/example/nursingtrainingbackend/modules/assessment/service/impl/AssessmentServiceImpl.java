@@ -397,8 +397,8 @@ public class AssessmentServiceImpl implements AssessmentService {
         if (startAt == null) {
             throw new BusinessException(ErrorCode.ASSESSMENT_TIME_INVALID, "开考时间不能为空");
         }
-        if (endAt != null && endAt.isBefore(startAt)) {
-            throw new BusinessException(ErrorCode.ASSESSMENT_TIME_INVALID, "结束时间不能早于开考时间");
+        if (endAt != null && !endAt.isAfter(startAt)) {
+            throw new BusinessException(ErrorCode.ASSESSMENT_TIME_INVALID, "最晚提交时间必须晚于开考时间");
         }
     }
 

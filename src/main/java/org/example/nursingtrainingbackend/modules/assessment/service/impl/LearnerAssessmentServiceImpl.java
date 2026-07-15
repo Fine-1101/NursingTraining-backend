@@ -1,12 +1,15 @@
 package org.example.nursingtrainingbackend.modules.assessment.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
+import org.example.nursingtrainingbackend.common.page.PageResult;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
+import org.example.nursingtrainingbackend.modules.assessment.dto.LearnerResultHistoryQuery;
 import org.example.nursingtrainingbackend.modules.assessment.entity.*;
 import org.example.nursingtrainingbackend.modules.assessment.mapper.*;
 import org.example.nursingtrainingbackend.modules.assessment.service.LearnerAssessmentService;
@@ -38,21 +41,45 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     private final CourseMapper courseMapper;
     private final ObjectMapper objectMapper;
 
+    @Override
+    public PageResult<AssessmentResultHistoryItemVO> listResultHistory(
+            Long userId,
+            LearnerResultHistoryQuery query
+    ) {
+        Page<AssessmentResultHistoryItemVO> page = new Page<>(
+                query.getPage(),
+                query.getSize()
+        );
+        return PageResult.from(
+                attemptMapper.selectLearnerResultHistory(page, userId, query)
+        );
+    }
+
     // ==================== 3. 查询课程考核卡片 ====================
 
     @Override
     public AssessmentCardVO getAssessmentCard(Long courseId, Long userId) {
-        // 查找该课程下已发布的考核
-        Assessment assessment = assessmentMapper.selectOne(
+        return listAssessmentCards(courseId, userId).stream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    @Override
+    public List<AssessmentCardVO> listAssessmentCards(Long courseId, Long userId) {
+        return assessmentMapper.selectList(
                 Wrappers.<Assessment>lambdaQuery()
                         .eq(Assessment::getCourseId, courseId)
                         .eq(Assessment::getStatus, 1) // 已发布
                         .isNull(Assessment::getDeletedAt)
-                        .last("LIMIT 1")
-        );
-        if (assessment == null) {
-            return null;
-        }
+                        .orderByAsc(Assessment::getStartAt)
+                        .orderByAsc(Assessment::getId)
+        ).stream().map(assessment -> buildAssessmentCard(assessment, userId)).toList();
+    }
+
+    private AssessmentCardVO buildAssessmentCard(
+            Assessment assessment,
+            Long userId
+    ) {
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -98,35 +125,31 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
             actionEnabled = false;
             disabledReason = "考核将于" + assessment.getStartAt().toLocalDate()
                     + " " + assessment.getStartAt().toLocalTime().truncatedTo(ChronoUnit.MINUTES) + "开始";
-        } else if (assessment.getEndAt() != null && now.isAfter(assessment.getEndAt())) {
+        } else if (assessment.getEndAt() != null && !now.isBefore(assessment.getEndAt())) {
             state = "CLOSED";
-            action = "NONE";
-            actionEnabled = false;
+            action = latestFinished == null ? "NONE" : "VIEW_RESULT";
+            actionEnabled = latestFinished != null;
             disabledReason = "考核已结束";
         } else if (inProgress != null) {
             state = "IN_PROGRESS";
             action = "CONTINUE";
             actionEnabled = true;
+        } else if (latestFinished != null) {
+            if (Integer.valueOf(1).equals(latestFinished.getPassed())) {
+                state = "PASSED";
+            } else {
+                state = "FAILED";
+            }
+            action = remaining > 0 ? "RETRY" : "VIEW_RESULT";
+            actionEnabled = true;
+            if (remaining == 0) {
+                disabledReason = "考试次数已用完";
+            }
         } else if (used >= assessment.getMaxAttempts()) {
             state = "NO_ATTEMPTS";
             action = "NONE";
             actionEnabled = false;
             disabledReason = "考试次数已用完";
-        } else if (latestFinished != null) {
-            if (Integer.valueOf(1).equals(latestFinished.getPassed())) {
-                state = "PASSED";
-                action = "VIEW_RESULT";
-                actionEnabled = true;
-            } else {
-                state = "FAILED";
-                if (remaining > 0 && (assessment.getEndAt() == null || now.isBefore(assessment.getEndAt()))) {
-                    action = "RETRY";
-                    actionEnabled = true;
-                } else {
-                    action = "VIEW_RESULT";
-                    actionEnabled = true;
-                }
-            }
         } else {
             state = "NOT_STARTED";
             action = "START";
@@ -175,7 +198,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
         if (now.isBefore(assessment.getStartAt())) {
             throw new BusinessException(ErrorCode.ASSESSMENT_NOT_STARTED);
         }
-        if (assessment.getEndAt() != null && now.isAfter(assessment.getEndAt())) {
+        if (assessment.getEndAt() != null && !now.isBefore(assessment.getEndAt())) {
             throw new BusinessException(ErrorCode.ASSESSMENT_CLOSED);
         }
 
@@ -218,6 +241,10 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
         // 创建新 attempt
         int attemptNo = usedCount.intValue() + 1;
         LocalDateTime deadlineAt = now.plusMinutes(assessment.getDurationMinutes());
+        if (assessment.getEndAt() != null
+                && assessment.getEndAt().isBefore(deadlineAt)) {
+            deadlineAt = assessment.getEndAt();
+        }
 
         AssessmentAttempt attempt = new AssessmentAttempt();
         attempt.setAssessmentId(assessmentId);
@@ -459,6 +486,114 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
         );
     }
 
+    @Override
+    public AttemptReviewVO getAttemptReview(Long attemptId, Long userId) {
+        AssessmentAttempt attempt = attemptMapper.selectById(attemptId);
+        if (attempt == null) {
+            throw new BusinessException(ErrorCode.ASSESSMENT_ATTEMPT_NOT_FOUND);
+        }
+        if (!Objects.equals(attempt.getUserId(), userId)) {
+            throw new BusinessException(ErrorCode.ASSESSMENT_ATTEMPT_NOT_OWNER);
+        }
+        if (!List.of(2, 3).contains(attempt.getStatus())) {
+            throw new BusinessException(
+                    ErrorCode.ASSESSMENT_STATUS_CONFLICT,
+                    "考试尚未完成，不能查看正确答案"
+            );
+        }
+
+        Assessment assessment = assessmentMapper.selectById(attempt.getAssessmentId());
+        if (assessment == null) {
+            throw new BusinessException(ErrorCode.ASSESSMENT_NOT_FOUND);
+        }
+        Course course = courseMapper.selectById(assessment.getCourseId());
+
+        Map<Long, AssessmentAnswer> answerMap = answerMapper.selectList(
+                Wrappers.<AssessmentAnswer>lambdaQuery()
+                        .eq(AssessmentAnswer::getAttemptId, attemptId)
+        ).stream().collect(Collectors.toMap(
+                AssessmentAnswer::getAttemptQuestionId,
+                answer -> answer,
+                (first, ignored) -> first
+        ));
+
+        List<AssessmentAttemptQuestion> questionSnapshots =
+                attemptQuestionMapper.selectList(
+                        Wrappers.<AssessmentAttemptQuestion>lambdaQuery()
+                                .eq(AssessmentAttemptQuestion::getAttemptId, attemptId)
+                                .orderByAsc(AssessmentAttemptQuestion::getSortOrder)
+                );
+
+        List<AttemptReviewVO.QuestionReviewVO> questions = questionSnapshots.stream()
+                .map(question -> buildReviewQuestion(question, answerMap.get(question.getId())))
+                .toList();
+
+        int correctCount = (int) questions.stream()
+                .filter(item -> Boolean.TRUE.equals(item.correct()))
+                .count();
+        int unansweredCount = (int) questions.stream()
+                .filter(item -> item.selectedOptionKey() == null
+                        || item.selectedOptionKey().isBlank())
+                .count();
+        int wrongCount = questions.size() - correctCount - unansweredCount;
+
+        return new AttemptReviewVO(
+                attempt.getId(),
+                assessment.getId(),
+                assessment.getTitle(),
+                course == null ? null : course.getId(),
+                course == null ? null : course.getTitle(),
+                attempt.getAttemptNo(),
+                attempt.getScore(),
+                assessment.getTotalScore(),
+                assessment.getPassScore(),
+                Integer.valueOf(1).equals(attempt.getPassed()),
+                correctCount,
+                wrongCount,
+                unansweredCount,
+                attempt.getSubmittedAt(),
+                questions
+        );
+    }
+
+    private AttemptReviewVO.QuestionReviewVO buildReviewQuestion(
+            AssessmentAttemptQuestion question,
+            AssessmentAnswer answer
+    ) {
+        String selectedKey = answer == null ? null : answer.getSelectedOptionKey();
+        String correctKey = question.getCorrectOptionKey();
+
+        List<AttemptReviewVO.OptionReviewVO> options =
+                parseOptionsSnapshot(question.getOptionsSnapshot()).stream()
+                        .map(option -> new AttemptReviewVO.OptionReviewVO(
+                                option.optionKey(),
+                                option.content(),
+                                Objects.equals(option.optionKey(), selectedKey),
+                                Objects.equals(option.optionKey(), correctKey)
+                        ))
+                        .toList();
+
+        Boolean correct = selectedKey == null || selectedKey.isBlank()
+                ? null
+                : Objects.equals(selectedKey, correctKey);
+
+        return new AttemptReviewVO.QuestionReviewVO(
+                question.getId(),
+                question.getSortOrder(),
+                question.getQuestionType(),
+                question.getStemSnapshot(),
+                question.getScore(),
+                answer == null || answer.getScore() == null
+                        ? BigDecimal.ZERO
+                        : answer.getScore(),
+                selectedKey,
+                correctKey,
+                correct,
+                question.getAnalysisSnapshot(),
+                options
+        );
+    }
+
     // ==================== 私有辅助方法 ====================
 
     /**
@@ -579,6 +714,34 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     }
 
     /**
+     * 后台批量收卷。即使学员没有继续请求接口，到达本次截止时间后也会完成判卷。
+     */
+    @Override
+    @Transactional
+    public int autoSubmitExpiredAttempts() {
+        LocalDateTime now = LocalDateTime.now();
+        List<AssessmentAttempt> expiredAttempts = attemptMapper.selectList(
+                Wrappers.<AssessmentAttempt>lambdaQuery()
+                        .eq(AssessmentAttempt::getStatus, 1)
+                        .le(AssessmentAttempt::getDeadlineAt, now)
+                        .orderByAsc(AssessmentAttempt::getDeadlineAt)
+                        .last("LIMIT 100")
+        );
+
+        int submittedCount = 0;
+        for (AssessmentAttempt attempt : expiredAttempts) {
+            Assessment latest = assessmentMapper.selectById(attempt.getAssessmentId());
+            if (latest == null) {
+                log.warn("自动收卷跳过：考核不存在，attemptId={}", attempt.getId());
+                continue;
+            }
+            autoSubmitAttempt(attempt, latest);
+            submittedCount++;
+        }
+        return submittedCount;
+    }
+
+    /**
      * 判分：逐题对比正确答案并计算总分
      */
     private void gradeAttempt(AssessmentAttempt attempt, Assessment assessment) {
@@ -611,10 +774,11 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
         }
 
         LocalDateTime now = LocalDateTime.now();
-        attempt.setStatus(now.isAfter(attempt.getDeadlineAt()) ? 3 : 2); // 超时=3，正常=2
+        boolean timedOut = !now.isBefore(attempt.getDeadlineAt());
+        attempt.setStatus(timedOut ? 3 : 2); // 超时=3，正常=2
         attempt.setScore(totalScore);
         attempt.setPassed(totalScore.compareTo(assessment.getPassScore()) >= 0 ? 1 : 0);
-        attempt.setSubmittedAt(now);
+        attempt.setSubmittedAt(timedOut ? attempt.getDeadlineAt() : now);
         attemptMapper.updateById(attempt);
     }
 

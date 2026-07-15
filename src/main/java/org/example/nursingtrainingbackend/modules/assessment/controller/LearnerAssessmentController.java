@@ -1,11 +1,16 @@
 package org.example.nursingtrainingbackend.modules.assessment.controller;
 
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
+import org.example.nursingtrainingbackend.common.page.PageResult;
 import org.example.nursingtrainingbackend.common.result.Result;
+import org.example.nursingtrainingbackend.modules.assessment.dto.LearnerResultHistoryQuery;
 import org.example.nursingtrainingbackend.modules.assessment.service.LearnerAssessmentService;
 import org.example.nursingtrainingbackend.modules.assessment.vo.learner.*;
 import org.example.nursingtrainingbackend.security.SecurityUtils;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 学员端考核控制器
@@ -17,6 +22,16 @@ public class LearnerAssessmentController {
 
     private final LearnerAssessmentService learnerAssessmentService;
 
+    @GetMapping("/assessment-results")
+    public Result<PageResult<AssessmentResultHistoryItemVO>> listResultHistory(
+            @Valid LearnerResultHistoryQuery query
+    ) {
+        Long userId = SecurityUtils.currentUserId();
+        return Result.success(
+                learnerAssessmentService.listResultHistory(userId, query)
+        );
+    }
+
     /**
      * 3. 查询课程考核卡片
      */
@@ -25,6 +40,19 @@ public class LearnerAssessmentController {
         Long userId = SecurityUtils.currentUserId();
         AssessmentCardVO card = learnerAssessmentService.getAssessmentCard(courseId, userId);
         return Result.success(card);
+    }
+
+    /**
+     * 查询课程下全部已发布考核。
+     */
+    @GetMapping("/courses/{courseId}/assessments")
+    public Result<List<AssessmentCardVO>> listAssessmentCards(
+            @PathVariable Long courseId
+    ) {
+        Long userId = SecurityUtils.currentUserId();
+        return Result.success(
+                learnerAssessmentService.listAssessmentCards(courseId, userId)
+        );
     }
 
     /**
@@ -79,5 +107,16 @@ public class LearnerAssessmentController {
         Long userId = SecurityUtils.currentUserId();
         AttemptResultVO vo = learnerAssessmentService.getAttemptResult(attemptId, userId);
         return Result.success(vo);
+    }
+
+    /**
+     * 查看本人已完成考试的题目、正确答案和作答结果。
+     */
+    @GetMapping("/assessment-attempts/{attemptId}/review")
+    public Result<AttemptReviewVO> getAttemptReview(@PathVariable Long attemptId) {
+        Long userId = SecurityUtils.currentUserId();
+        return Result.success(
+                learnerAssessmentService.getAttemptReview(attemptId, userId)
+        );
     }
 }

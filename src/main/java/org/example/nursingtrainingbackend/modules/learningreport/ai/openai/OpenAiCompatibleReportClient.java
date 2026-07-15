@@ -33,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 @Profile("!test-ai")
 public class OpenAiCompatibleReportClient implements AiReportClient {
 
+    private static final String DEFAULT_REPORT_TITLE = "本周个性化学习报告";
+
     private static final String SYSTEM_PROMPT = """
             你是一名护理培训学习分析助手。
 
@@ -262,7 +264,9 @@ public class OpenAiCompatibleReportClient implements AiReportClient {
         }
 
         return new GeneratedLearningReport(
-                report.title(),
+                report.title() == null || report.title().isBlank()
+                        ? DEFAULT_REPORT_TITLE
+                        : report.title().trim(),
                 report.summary(),
                 report.performanceLevel(),
                 snapshot.overview(),
@@ -288,6 +292,63 @@ public class OpenAiCompatibleReportClient implements AiReportClient {
                 6. 学习计划日期使用yyyy-MM-dd格式
                 7. 学习计划序号从1开始连续递增
                 8. 新用户报告不得声称存在长期趋势
+                9. 下方JSON结构中的全部顶层字段都必须存在，不得省略，不得把字段名翻译成中文
+                10. title必须是非空字符串；没有可用数据的数组字段必须返回[]
+                11. overview必须原样复制输入中的overview，不得修改或重新计算
+                12. encouragement必须结合输入中的至少一项真实学习表现，避免使用空泛的固定套话
+                13. disclaimer必须明确说明报告仅用于培训辅助且不构成临床诊断或操作依据
+
+                必须严格使用以下JSON结构：
+                {
+                  "title": "非空报告标题",
+                  "summary": "非空报告总结",
+                  "performanceLevel": "BEGINNER、DEVELOPING、PROFICIENT或EXCELLENT",
+                  "overview": {
+                    "activeDays": "原样复制输入值",
+                    "studyMinutes": "原样复制输入值",
+                    "completedPoints": "原样复制输入值",
+                    "assessmentCount": "原样复制输入值",
+                    "averageScore": "原样复制输入值或null"
+                  },
+                  "highlights": [
+                    {
+                      "type": "亮点类型",
+                      "title": "亮点标题",
+                      "description": "亮点描述",
+                      "evidence": ["输入中存在的证据"]
+                    }
+                  ],
+                  "strengths": [
+                    {
+                      "knowledgePointId": "输入中的知识点ID",
+                      "name": "输入中的知识点名称",
+                      "masteryScore": "输入中的掌握度",
+                      "confidence": "输入中的置信度",
+                      "status": "优势状态",
+                      "analysis": "分析说明",
+                      "evidence": ["输入中存在的证据"]
+                    }
+                  ],
+                  "weaknesses": [],
+                  "studyPlan": [
+                    {
+                      "sequence": 1,
+                      "planDate": "yyyy-MM-dd",
+                      "title": "计划标题",
+                      "action": "具体行动",
+                      "estimatedMinutes": "大于0的整数",
+                      "reason": "计划原因",
+                      "navigation": {
+                        "actionType": "跳转类型",
+                        "courseId": "candidateCourses中的ID或null",
+                        "chapterId": "candidateCourses中的ID或null",
+                        "pointId": "candidateCourses中的ID或null"
+                      }
+                    }
+                  ],
+                  "encouragement": "结合本周期真实表现的非空鼓励语",
+                  "disclaimer": "本报告仅用于培训学习辅助，不构成临床诊断、治疗或护理操作依据。"
+                }
 
                 LearningReportSnapshot：
                 %s

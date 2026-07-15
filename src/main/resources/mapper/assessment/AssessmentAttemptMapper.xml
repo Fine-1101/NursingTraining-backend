@@ -3,6 +3,68 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="org.example.nursingtrainingbackend.modules.assessment.mapper.AssessmentAttemptMapper">
 
+    <select id="selectLearnerResultHistory"
+            resultType="org.example.nursingtrainingbackend.modules.assessment.vo.learner.AssessmentResultHistoryItemVO">
+        SELECT
+            aa.id AS attemptId,
+            aa.assessment_id AS assessmentId,
+            a.title AS assessmentTitle,
+            a.course_id AS courseId,
+            c.title AS courseTitle,
+            aa.attempt_no AS attemptNo,
+            aa.score,
+            a.total_score AS totalScore,
+            a.pass_score AS passScore,
+            CASE WHEN aa.passed = 1 THEN TRUE ELSE FALSE END AS passed,
+            aa.status,
+            CASE aa.status
+                WHEN 2 THEN '已交卷'
+                WHEN 3 THEN '已超时提交'
+                ELSE '未知'
+            END AS statusName,
+            aa.started_at AS startedAt,
+            aa.submitted_at AS submittedAt,
+            CASE
+                WHEN aa.started_at IS NULL THEN NULL
+                ELSE TIMESTAMPDIFF(
+                    SECOND,
+                    aa.started_at,
+                    COALESCE(aa.submitted_at, aa.deadline_at)
+                )
+            END AS durationSeconds
+        FROM assessment_attempt aa
+        INNER JOIN assessment a
+            ON a.id = aa.assessment_id
+           AND a.deleted_at IS NULL
+        INNER JOIN course c
+            ON c.id = a.course_id
+           AND c.deleted_at IS NULL
+        WHERE aa.user_id = #{userId}
+          AND aa.status IN (2, 3)
+        <if test="query.courseId != null">
+            AND a.course_id = #{query.courseId}
+        </if>
+        <if test="query.passed != null and query.passed == true">
+            AND aa.passed = 1
+        </if>
+        <if test="query.passed != null and query.passed == false">
+            AND aa.passed = 0
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND (
+                a.title LIKE CONCAT('%', #{query.keyword}, '%')
+                OR c.title LIKE CONCAT('%', #{query.keyword}, '%')
+            )
+        </if>
+        <if test="query.submittedFrom != null">
+            AND aa.submitted_at &gt;= #{query.submittedFrom}
+        </if>
+        <if test="query.submittedTo != null">
+            AND aa.submitted_at &lt;= #{query.submittedTo}
+        </if>
+        ORDER BY COALESCE(aa.submitted_at, aa.deadline_at) DESC, aa.id DESC
+    </select>
+
     <!-- API-16: 成绩列表分页 -->
     <select id="selectResultPage"
             resultType="org.example.nursingtrainingbackend.modules.assessment.vo.ResultItemVO">
