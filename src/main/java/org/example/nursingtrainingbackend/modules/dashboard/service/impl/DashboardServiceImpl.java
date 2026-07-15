@@ -15,6 +15,7 @@ import org.example.nursingtrainingbackend.modules.dashboard.mapper.DashboardMapp
 import org.example.nursingtrainingbackend.modules.dashboard.service.DashboardService;
 import org.example.nursingtrainingbackend.modules.dashboard.vo.CourseLearningTrendVO;
 import org.example.nursingtrainingbackend.modules.dashboard.vo.DashboardVO;
+import org.example.nursingtrainingbackend.modules.dashboard.vo.LearningTrendDrillVO;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
@@ -94,34 +95,87 @@ public class DashboardServiceImpl implements DashboardService {
         String normalizedRange = range == null ? "" : range.trim().toUpperCase();
         String normalizedGranularity = granularity == null ? "" : granularity.trim().toUpperCase();
         validateCourseTrendParameters(courseId, normalizedRange, normalizedGranularity);
-
+    
         Course course = courseMapper.selectById(courseId);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-
+    
         LocalDate today = LocalDate.now();
         List<PeriodWindow> timeline = buildCourseTrendTimeline(today, normalizedGranularity);
         LocalDate start = timeline.getFirst().start();
         LocalDate endExclusive = timeline.getLast().endInclusive().plusDays(1);
-
+    
         List<CourseTrendRow> rawData = dashboardMapper.selectCourseTrendByRange(
                 courseId,
                 start.format(DateTimeFormatter.ISO_LOCAL_DATE),
                 endExclusive.format(DateTimeFormatter.ISO_LOCAL_DATE),
                 normalizedGranularity);
-
+    
         Map<String, CourseTrendRow> dataByPeriod = rawData.stream()
                 .collect(Collectors.toMap(CourseTrendRow::getPeriodStart, row -> row, (left, right) -> left));
         List<CourseLearningTrendVO.Point> points = timeline.stream()
                 .map(period -> toCourseTrendPoint(period, dataByPeriod.get(period.key())))
                 .toList();
-
+    
         return CourseLearningTrendVO.builder()
                 .courseId(courseId)
                 .courseTitle(course.getTitle())
                 .range(normalizedRange)
                 .granularity(normalizedGranularity)
+                .points(points)
+                .build();
+    }
+
+    @Override
+    public LearningTrendDrillVO getLearningTrendDrill(int year, int month, Integer weekIndex) {
+        if (month < 1 || month > 12) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "month 必须在 1-12 之间");
+        }
+
+        List<LearningTrendDrillVO.BreadcrumbItem> breadcrumbs = new ArrayList<>();
+        breadcrumbs.add(LearningTrendDrillVO.BreadcrumbItem.builder()
+                .label(year + "年" + month + "月")
+                .level("MONTH").year(year).month(month).build());
+
+        List<TrendRow> rawData;
+        String level;
+
+        if (weekIndex == null) {
+            level = "WEEK";
+            rawData = dashboardMapper.selectWeeklyTrendInMonth(year, month);
+        } else {
+            if (weekIndex < 1 || weekIndex > 5) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "weekIndex 必须在 1-5 之间");
+            }
+            level = "DAY";
+            LocalDate monthStart = LocalDate.of(year, month, 1);
+            LocalDate weekStart = monthStart.plusDays((long) (weekIndex - 1) * 7);
+            LocalDate monthEnd = monthStart.plusMonths(1);
+            LocalDate weekEnd = weekStart.plusDays(7);
+            if (weekEnd.isAfter(monthEnd)) {
+                weekEnd = monthEnd;
+            }
+            breadcrumbs.add(LearningTrendDrillVO.BreadcrumbItem.builder()
+                    .label("第" + weekIndex + "周")
+                    .level("WEEK").year(year).month(month).weekIndex(weekIndex).build());
+            rawData = dashboardMapper.selectDailyTrendInWeek(
+                    weekStart.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                    weekEnd.format(DateTimeFormatter.ISO_LOCAL_DATE));
+        }
+
+        List<LearningTrendDrillVO.DrillTrendPoint> points = rawData.stream()
+                .map(r -> LearningTrendDrillVO.DrillTrendPoint.builder()
+                        .label(r.getLabel())
+                        .period(r.getPeriod())
+                        .learnerCount(nullToZero(r.getLearnerCount()))
+                        .completedCourseCount(nullToZero(r.getCompletedCourseCount()))
+                        .build())
+                .toList();
+
+        return LearningTrendDrillVO.builder()
+                .level(level)
+                .breadcrumbs(breadcrumbs)
                 .points(points)
                 .build();
     }
@@ -303,7 +357,6 @@ public class DashboardServiceImpl implements DashboardService {
             startDate = today.minusMonths(6).withDayOfMonth(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
             rawData = dashboardMapper.selectMonthlyLearningTrend(startDate, endDate);
         } else {
-            // LAST_1_MONTHS (default)
             unit = "MONTH";
             startDate = today.minusMonths(1).withDayOfMonth(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
             rawData = dashboardMapper.selectMonthlyLearningTrend(startDate, endDate);

@@ -1,0 +1,11 @@
+app:
+  learning-report:
+    enabled: true
+    ai:
+      enabled: true
+      provider: fake
+      base-url: http://localhost/fake-ai
+      api-key: fake-api-key
+      model: fake-model
+      chat-path: /chat/completions
+

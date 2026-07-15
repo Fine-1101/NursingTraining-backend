@@ -21,7 +21,8 @@ public record CategoryNode(
         List<CategoryNode> children,
         LocalDateTime updatedAt
 ) {
-    public static CategoryNode from(Category category, String parentName, boolean hasChildren) {
+    public static CategoryNode from(Category category, String parentName, boolean hasChildren,
+                                     long directCourseCount, long courseCount) {
         return new CategoryNode(
                 category.getId(),
                 category.getName(),
@@ -30,8 +31,8 @@ public record CategoryNode(
                 category.getLevel(),
                 category.getIcon(),
                 category.getStatus(),
-                0L,
-                0L,
+                directCourseCount,
+                courseCount,
                 hasChildren,
                 new ArrayList<>(),
                 category.getUpdatedAt()

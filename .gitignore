@@ -47,3 +47,11 @@ test_progress.html
 backend_startup*.log
 uploads/
 user-front/.env
+
+### Log files ###
+*.log
+*.pid
+backend_*.log
+spring-boot-run*.log
+
+src/main/resources/application-local.yml

@@ -1,4 +1,6 @@
 spring:
+  profiles:
+    active: local
   application:
     name: nursing-training-backend
   autoconfigure:
@@ -42,10 +44,53 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5174}
   upload:
-    max-size: ${APP_UPLOAD_MAX_BYTES:104857600}
+    max-size: ${APP_UPLOAD_MAX_BYTES:314572800}
     allowed-content-types: ${APP_UPLOAD_TYPES:image/jpeg,image/png,image/gif,application/pdf,video/mp4,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint}
-  vod:
+
+  learning-report:
+    enabled: ${AI_REPORT_ENABLED:true}
+
+    eligibility:
+      onboarding-days: ${AI_REPORT_ONBOARDING_DAYS:7}
+      full-report-min-data-score: ${AI_REPORT_MIN_DATA_SCORE:50}
+      minimum-learning-events: ${AI_REPORT_MIN_EVENTS:1}
+      minimum-mastery-questions: ${AI_REPORT_MIN_QUESTIONS:5}
+
+    generation:
+      daily-limit: ${AI_REPORT_DAILY_LIMIT:3}
+      regenerate-daily-limit: ${AI_REPORT_REGENERATE_LIMIT:2}
+      max-strengths: 3
+      max-weaknesses: 3
+      max-plan-items: 7
+      reuse-unchanged-snapshot: true
+
+    ai:
+      enabled: ${AI_ENABLED:true}
+      provider: ${AI_PROVIDER:openai-compatible}
+      base-url: ${AI_BASE_URL:}
+      api-key: ${AI_API_KEY:}
+      model: ${AI_MODEL:}
+      chat-path: ${AI_CHAT_PATH:/chat/completions}
+      connect-timeout: ${AI_CONNECT_TIMEOUT:5s}
+      read-timeout: ${AI_READ_TIMEOUT:60s}
+      max-retries: ${AI_MAX_RETRIES:2}
+      temperature: ${AI_TEMPERATURE:0.3}
+      max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2000}
+      prompt-version: ${AI_PROMPT_VERSION:learning-report-v1.0}
+      schema-version: ${AI_SCHEMA_VERSION:1.0}
+
+    fallback:
+      enabled: true
+
+    recovery:
+      enabled: true
+      scan-interval: 1m
+      pending-timeout: 5m
+      generating-timeout: 3m
+
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
     access-key-id: ${ALIYUN_ACCESS_KEY_ID:}
     access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:}
-    region-id: ${VOD_REGION_ID:cn-shanghai}
-    transcode-template-group-id: ${VOD_TRANSCODE_TEMPLATE_GROUP_ID:}
+    bucket-name: ${ALIYUN_OSS_BUCKET_NAME:shared-doc-backend}
+    domain: ${ALIYUN_OSS_DOMAIN:}

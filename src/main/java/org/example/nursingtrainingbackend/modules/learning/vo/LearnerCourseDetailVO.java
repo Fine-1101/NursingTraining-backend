@@ -36,8 +36,14 @@ public class LearnerCourseDetailVO {
     /** 当前进度百分比 */
     private BigDecimal progressPercent;
 
+    /** 章节总数 */
+    private Integer chapterCount;
+
     /** 总课程点数 */
     private Integer totalPointCount;
+
+    /** 总课程点数（别名，前端兼容） */
+    private Integer pointCount;
 
     /** 已完成课程点数 */
     private Integer completedPointCount;
@@ -62,6 +68,12 @@ public class LearnerCourseDetailVO {
         /** 章节排序 */
         private Integer sort;
 
+        /** 章节内课程点总数 */
+        private Integer pointCount;
+
+        /** 章节内已完成课程点数 */
+        private Integer completedPointCount;
+
         /** 课程点列表 */
         private List<PointVO> points;
     }
@@ -85,6 +97,9 @@ public class LearnerCourseDetailVO {
 
         /** 学习状态：NOT_STARTED、LEARNING、COMPLETED */
         private String learningStatus;
+
+        /** 关联课件数量 */
+        private Integer resourceCount;
 
         /** 关联课件列表 */
         private List<ResourceVO> resources;

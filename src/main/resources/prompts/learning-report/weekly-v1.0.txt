@@ -1,0 +1,6 @@
+请根据以下 LearningReportSnapshot 生成报告。
+
+报告输出必须符合 response-schema-v1.0。
+
+LearningReportSnapshot：
+{{snapshotJson}}
