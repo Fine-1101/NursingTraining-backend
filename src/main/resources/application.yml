@@ -43,6 +43,12 @@ app:
     expiration: ${JWT_EXPIRATION:2h}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5174}
+  websocket:
+    endpoint: ${WS_ENDPOINT:/ws/notifications}
+    ticket-expiration: ${WS_TICKET_EXPIRATION:60s}
+    idle-timeout: ${WS_IDLE_TIMEOUT:60s}
+    heartbeat-interval: ${WS_HEARTBEAT_INTERVAL:30s}
+    allowed-origins: ${WS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5174}
   upload:
     max-size: ${APP_UPLOAD_MAX_BYTES:314572800}
     allowed-content-types: ${APP_UPLOAD_TYPES:image/jpeg,image/png,image/gif,application/pdf,video/mp4,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint}
@@ -87,6 +93,7 @@ app:
       scan-interval: 1m
       pending-timeout: 5m
       generating-timeout: 3m
+
 
   oss:
     endpoint: ${ALIYUN_OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
