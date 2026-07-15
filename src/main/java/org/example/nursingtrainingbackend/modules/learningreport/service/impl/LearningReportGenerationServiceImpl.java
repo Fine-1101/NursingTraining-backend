@@ -33,7 +33,7 @@ public class LearningReportGenerationServiceImpl
             throw new IllegalArgumentException("学习报告快照不能为空");
         }
 
-        if (!properties.ai().enabled()) {
+        if (properties.ai() == null || !properties.ai().enabled()) {
             return ruleBasedReportService.generate(snapshot);
         }
 
@@ -44,7 +44,7 @@ public class LearningReportGenerationServiceImpl
             AiReportResult result = aiReportClient.generate(snapshot, options);
             return result.report();
         } catch (RuntimeException exception) {
-            if (!properties.fallback().enabled()) {
+            if (properties.fallback() == null || !properties.fallback().enabled()) {
                 throw exception;
             }
 

@@ -9,6 +9,7 @@ import org.example.nursingtrainingbackend.modules.learningreport.ai.ReportGenera
 import org.example.nursingtrainingbackend.modules.learningreport.dto.GeneratedLearningReport;
 import org.example.nursingtrainingbackend.modules.learningreport.dto.LearningReportSnapshot;
 import org.example.nursingtrainingbackend.modules.learningreport.validator.AiReportResponseValidator;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -57,6 +58,7 @@ public class OpenAiCompatibleReportClient implements AiReportClient {
     private final AiReportResponseValidator responseValidator;
 
     public OpenAiCompatibleReportClient(
+            @Autowired(required = false)
             @Qualifier("aiReportRestClient") RestClient restClient,
             ObjectMapper objectMapper,
             LearningReportProperties properties,
