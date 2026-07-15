@@ -272,14 +272,14 @@ public class PptServiceImpl implements PptService {
     }
 
     private PptListItem toListItem(Ppt ppt) {
-        long courseCount = coursePptMapper.countByPptId(ppt.getId());
+        //long courseCount = coursePptMapper.countByPptId(ppt.getId());
         return PptListItem.builder()
                 .id(ppt.getId())
                 .title(ppt.getTitle())
                 .originalName(ppt.getOriginalName())
                 .fileSize(ppt.getFileSize())
                 .fileSizeText(formatFileSize(ppt.getFileSize()))
-                .courseCount(courseCount)
+               // .courseCount(courseCount)
                 .uploaderId(ppt.getCreatedBy())
                 .uploaderName(getUploaderName(ppt.getCreatedBy()))
                 .uploadedAt(ppt.getUploadedAt())
@@ -288,14 +288,14 @@ public class PptServiceImpl implements PptService {
     }
 
     private PptDetailVO toDetailVO(Ppt ppt) {
-        long courseCount = coursePptMapper.countByPptId(ppt.getId());
+      //  long courseCount = coursePptMapper.countByPptId(ppt.getId());
         return PptDetailVO.builder()
                 .id(ppt.getId())
                 .title(ppt.getTitle())
                 .description(ppt.getDescription())
                 .originalName(ppt.getOriginalName())
                 .fileSize(ppt.getFileSize())
-                .courseCount(courseCount)
+               // .courseCount(courseCount)
                 .allowDownload(ppt.getAllowDownload() == 1)
                 .uploaderId(ppt.getCreatedBy())
                 .uploaderName(getUploaderName(ppt.getCreatedBy()))
