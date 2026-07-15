@@ -185,7 +185,13 @@ public enum ErrorCode {
     AI_PROVIDER_TIMEOUT(
         6510, "AI报告生成超时", HttpStatus.GATEWAY_TIMEOUT),
     AI_RESPONSE_INVALID(
-        6511, "AI报告格式校验失败", HttpStatus.INTERNAL_SERVER_ERROR);
+        6511, "AI报告格式校验失败", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // ==================== 消息通知模块 (90xx) ====================
+    MESSAGE_NOT_FOUND(9001, "消息不存在", HttpStatus.NOT_FOUND),
+    MESSAGE_CONTENT_INVALID(9002, "消息内容长度必须为1到1000个字符", HttpStatus.BAD_REQUEST),
+    MESSAGE_SEND_FORBIDDEN(9003, "无权发送学员消息", HttpStatus.FORBIDDEN),
+    WS_TICKET_RATE_LIMITED(9004, "申请过于频繁，请稍后再试", HttpStatus.TOO_MANY_REQUESTS);
 
     private final int code;
     private final String message;
