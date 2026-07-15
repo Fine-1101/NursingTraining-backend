@@ -16,6 +16,8 @@ import org.example.nursingtrainingbackend.modules.category.entity.Category;
 import org.example.nursingtrainingbackend.modules.category.mapper.CategoryMapper;
 import org.example.nursingtrainingbackend.modules.category.service.CategoryService;
 import org.example.nursingtrainingbackend.modules.category.vo.*;
+import org.example.nursingtrainingbackend.modules.course.entity.Course;
+import org.example.nursingtrainingbackend.modules.course.mapper.CourseMapper;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CategoryServiceImpl implements CategoryService {
     private final CategoryMapper categoryMapper;
+    private final CourseMapper courseMapper;
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -146,6 +149,10 @@ public class CategoryServiceImpl implements CategoryService {
                 ? query.parentId() : 0L;
         log.info("[CategoryTree] 使用的 rootParentId={}", rootParentId);
 
+        // 批量查询各类别关联的课程数（一次SQL，避免N+1）
+        Map<Long, Long> directCourseCountMap = computeDirectCourseCounts();
+        Map<Long, Long> courseCountMap = computeRecursiveCourseCounts(allCategories, directCourseCountMap);
+
         Map<Long, CategoryNode> nodeMap = new LinkedHashMap<>();
         for (Category c : allCategories) {
             String parentName = null;
@@ -156,7 +163,9 @@ public class CategoryServiceImpl implements CategoryService {
                 }
             }
             boolean hasChildren = hasChildrenSet.contains(c.getId());
-            nodeMap.put(c.getId(), CategoryNode.from(c, parentName, hasChildren));
+            long directCount = directCourseCountMap.getOrDefault(c.getId(), 0L);
+            long totalCount = courseCountMap.getOrDefault(c.getId(), 0L);
+            nodeMap.put(c.getId(), CategoryNode.from(c, parentName, hasChildren, directCount, totalCount));
         }
 
         List<CategoryNode> roots = new ArrayList<>();
@@ -203,7 +212,11 @@ public class CategoryServiceImpl implements CategoryService {
             }
         }
 
-        return CategoryVO.from(category, parentName);
+        long directCount = courseMapper.selectCount(Wrappers.<Course>lambdaQuery()
+                .eq(Course::getCategoryId, id));
+        long totalCount = computeRecursiveCourseCount(id);
+
+        return CategoryVO.from(category, parentName, directCount, totalCount);
     }
 
     @Override
@@ -247,7 +260,7 @@ public class CategoryServiceImpl implements CategoryService {
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_OVERVIEW));
 
 
-        return CategoryVO.from(category, parentName);
+        return CategoryVO.from(category, parentName, 0L, 0L);
     }
 
     @Override
@@ -386,12 +399,11 @@ public class CategoryServiceImpl implements CategoryService {
             throw new BusinessException(ErrorCode.CATEGORY_HAS_CHILDREN);
         }
 
-        // TODO: 课程模块就绪后检查课程关联
-        // Long courseCount = courseMapper.selectCount(Wrappers.<Course>lambdaQuery()
-        //         .eq(Course::getCategoryId, id));
-        // if (courseCount > 0) {
-        //     throw new BusinessException(ErrorCode.CATEGORY_HAS_COURSES);
-        // }
+        Long courseCount = courseMapper.selectCount(Wrappers.<Course>lambdaQuery()
+                .eq(Course::getCategoryId, id));
+        if (courseCount > 0) {
+            throw new BusinessException(ErrorCode.CATEGORY_HAS_COURSES);
+        }
 
         categoryMapper.deleteById(id);
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_TREE));
@@ -427,13 +439,12 @@ public class CategoryServiceImpl implements CategoryService {
                 }
             }
 
-            // TODO: 课程模块就绪后检查课程关联
-            // Long courseCount = courseMapper.selectCount(Wrappers.<Course>lambdaQuery()
-            //         .eq(Course::getCategoryId, category.getId()));
-            // if (courseCount > 0) {
-            //     throw new BusinessException(ErrorCode.CATEGORY_HAS_ENABLED_CHILDREN,
-            //             "类别[" + category.getName() + "]已关联课程，不能删除");
-            // }
+            Long courseCount = courseMapper.selectCount(Wrappers.<Course>lambdaQuery()
+                    .eq(Course::getCategoryId, category.getId()));
+            if (courseCount > 0) {
+                throw new BusinessException(ErrorCode.CATEGORY_HAS_COURSES,
+                        "类别[" + category.getName() + "]已关联课程，不能删除");
+            }
         }
 
         categoryMapper.deleteBatchIds(uniqueIds);
@@ -460,7 +471,12 @@ public class CategoryServiceImpl implements CategoryService {
                 .filter(c -> Integer.valueOf(1).equals(c.getStatus())).count();
         long disabledCategories = totalCategories - enabledCategories;
 
-        CategorySummary summary = new CategorySummary(totalCategories, enabledCategories, disabledCategories, 0L);
+        // 批量查询各类别关联的课程数
+        Map<Long, Long> directCourseCountMap = computeDirectCourseCounts();
+        Map<Long, Long> courseCountMap = computeRecursiveCourseCounts(allCategories, directCourseCountMap);
+
+        long totalCourses = directCourseCountMap.values().stream().mapToLong(Long::longValue).sum();
+        CategorySummary summary = new CategorySummary(totalCategories, enabledCategories, disabledCategories, totalCourses);
 
         Map<Long, Category> categoryMap = allCategories.stream()
                 .collect(Collectors.toMap(Category::getId, c -> c, (a, b) -> a));
@@ -472,7 +488,8 @@ public class CategoryServiceImpl implements CategoryService {
         List<TopCategoryItem> topItems = new ArrayList<>();
         for (int i = 0; i < topCategories.size(); i++) {
             Category c = topCategories.get(i);
-            topItems.add(new TopCategoryItem(c.getId(), c.getName(), 0L, i + 1));
+            long count = courseCountMap.getOrDefault(c.getId(), 0L);
+            topItems.add(new TopCategoryItem(c.getId(), c.getName(), count, i + 1));
         }
 
         List<RecentUpdateItem> recentUpdates = allCategories.stream()
@@ -537,5 +554,58 @@ public class CategoryServiceImpl implements CategoryService {
             }
         }
         return result;
+    }
+
+    /**
+     * 批量查询每个类别直接关联的课程数（一次 SQL）
+     */
+    private Map<Long, Long> computeDirectCourseCounts() {
+        List<Course> allCourses = courseMapper.selectList(
+                Wrappers.<Course>lambdaQuery().select(Course::getCategoryId)
+        );
+        return allCourses.stream()
+                .filter(Objects::nonNull)
+                .filter(c -> c.getCategoryId() != null)
+                .collect(Collectors.groupingBy(Course::getCategoryId, Collectors.counting()));
+    }
+
+    /**
+     * 基于直接课程数，递归计算每个类别（含子类别）的总课程数
+     */
+    private Map<Long, Long> computeRecursiveCourseCounts(List<Category> allCategories,
+                                                          Map<Long, Long> directCourseCountMap) {
+        Map<Long, Long> result = new HashMap<>();
+        Map<Long, List<Category>> childrenMap = allCategories.stream()
+                .filter(c -> c.getParentId() != null && c.getParentId() != 0L)
+                .collect(Collectors.groupingBy(Category::getParentId));
+
+        for (Category c : allCategories) {
+            result.put(c.getId(), sumCourseCount(c.getId(), childrenMap, directCourseCountMap, new HashMap<>()));
+        }
+        return result;
+    }
+
+    private long sumCourseCount(Long categoryId, Map<Long, List<Category>> childrenMap,
+                                 Map<Long, Long> directCourseCountMap, Map<Long, Long> cache) {
+        if (cache.containsKey(categoryId)) return cache.get(categoryId);
+        long count = directCourseCountMap.getOrDefault(categoryId, 0L);
+        List<Category> children = childrenMap.getOrDefault(categoryId, List.of());
+        for (Category child : children) {
+            count += sumCourseCount(child.getId(), childrenMap, directCourseCountMap, cache);
+        }
+        cache.put(categoryId, count);
+        return count;
+    }
+
+    /**
+     * 计算单个类别（含子类别）的总课程数
+     */
+    private long computeRecursiveCourseCount(Long categoryId) {
+        List<Category> allCategories = categoryMapper.selectList(Wrappers.emptyWrapper());
+        Map<Long, Long> directCourseCountMap = computeDirectCourseCounts();
+        Map<Long, List<Category>> childrenMap = allCategories.stream()
+                .filter(c -> c.getParentId() != null && c.getParentId() != 0L)
+                .collect(Collectors.groupingBy(Category::getParentId));
+        return sumCourseCount(categoryId, childrenMap, directCourseCountMap, new HashMap<>());
     }
 }

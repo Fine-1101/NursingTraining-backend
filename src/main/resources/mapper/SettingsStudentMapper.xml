@@ -20,15 +20,10 @@
         FROM `user` u
         LEFT JOIN department d ON u.dept_id = d.id
         LEFT JOIN (
-            SELECT p.user_id,
-                   ROUND(AVG(COALESCE(p.progress_percent, 0)), 2) AS avg_progress
-            FROM user_course_progress p
-            INNER JOIN course c ON p.course_id = c.id AND c.status = 1 AND c.deleted_at IS NULL
-            INNER JOIN course_department cd ON c.id = cd.course_id
-            WHERE p.user_id IN (
-                SELECT id FROM `user` WHERE role_type = 1 AND deleted_at IS NULL
-            )
-            GROUP BY p.user_id
+            SELECT user_id,
+                   ROUND(AVG(COALESCE(progress_percent, 0)), 2) AS avg_progress
+            FROM user_course_progress
+            GROUP BY user_id
         ) avg_prog ON u.id = avg_prog.user_id
         WHERE u.role_type = 1
           AND u.deleted_at IS NULL
@@ -112,6 +107,26 @@
           AND c.status = 1
           AND c.deleted_at IS NULL
         LIMIT 1
+    </select>
+
+    <!-- 查询单个学员的平均学习进度 -->
+    <select id="selectAvgProgressByUserId" resultType="java.math.BigDecimal">
+        SELECT ROUND(AVG(COALESCE(progress_percent, 0)), 2)
+        FROM user_course_progress
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 批量查询多个学员的平均学习进度 -->
+    <select id="selectAvgProgressBatch"
+            resultType="java.util.HashMap">
+        SELECT user_id AS userId,
+               ROUND(AVG(COALESCE(progress_percent, 0)), 2) AS avgProgress
+        FROM user_course_progress
+        WHERE user_id IN
+        <foreach collection="userIds" item="uid" open="(" separator="," close=")">
+            #{uid}
+        </foreach>
+        GROUP BY user_id
     </select>
 
 </mapper>

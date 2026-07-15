@@ -114,6 +114,17 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
                 .map(this::toVO)
                 .collect(Collectors.toList());
 
+        // 去重：同一课程+同一动作类型+同一课件+同一时间（精确到秒）视为重复
+        Set<String> seen = new java.util.LinkedHashSet<>();
+        List<LearningRecordVO> deduped = new ArrayList<>();
+        for (LearningRecordVO vo : voList) {
+            String key = vo.getCourseId() + ":" + vo.getActionType() + ":" + vo.getResourceId() + ":" + vo.getOccurredAt();
+            if (seen.add(key)) {
+                deduped.add(vo);
+            }
+        }
+        voList = deduped;
+
         if (query.getKeyword() != null && !query.getKeyword().isBlank()) {
             String kw = query.getKeyword().toLowerCase();
             voList = voList.stream()
@@ -164,9 +175,17 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
 
             RecordOverviewVO overview = new RecordOverviewVO();
             overview.setSummaryCards(buildSummaryCards(records, userId, rangeStart));
-            overview.setResourceDistribution(buildResourceDistribution(records));
+            overview.setResourceDistribution(buildResourceDistributionFromProgress(userId, rangeStart));
             overview.setFrequencyTrend(buildFrequencyTrend(records, effectiveRange));
             overview.setTopCourses(buildTopCourses(records, 8));
+
+            // 写入缓存
+            try {
+                String json = objectMapper.writeValueAsString(overview);
+                redisTemplate.opsForValue().set(cacheKey, json, LEARNER_RECORD_STATS_CACHE_TTL_SECONDS, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                log.warn("写入学员记录概览缓存失败, userId={}, range={}", userId, effectiveRange, e);
+            }
 
             return overview;
         } catch (BusinessException e) {
@@ -352,7 +371,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
             stats.setTotalLearningDays(allLearningDates.size());
             stats.setConsecutiveDays(calculateConsecutiveDays(allLearningDates));
 
-            stats.setResourceDistribution(buildResourceDistribution(records));
+            stats.setResourceDistribution(buildResourceDistributionFromProgress(userId, rangeStart));
             stats.setFrequencyTrend(buildFrequencyTrend(records, effectiveRange));
             stats.setTopCourses(buildTopCourses(records, 5));
 
@@ -378,7 +397,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
         applyRangeFilter(wrapper, effectiveRange);
 
         List<UserLearningRecord> records = userLearningRecordMapper.selectList(wrapper);
-        return buildResourceDistribution(records);
+        return buildResourceDistributionFromProgress(userId, resolveRangeStart(effectiveRange));
     }
 
     // ==================== 9. 频率趋势 ====================
@@ -408,26 +427,11 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
         Long userId = SecurityUtils.currentUserId();
         validateLearner(userId);
 
-        String effectiveRange = (query.getRange() != null && !query.getRange().isBlank())
-                ? query.getRange().toUpperCase() : "TODAY";
-        validateRange(effectiveRange);
-
-        String cacheKey = LEARNER_COURSE_RANK_CACHE_PREFIX + "top:" + userId + ":" + effectiveRange + ":" + query.getPage() + ":" + query.getSize();
-
-        // 尝试从缓存获取
-        try {
-            String cachedJson = redisTemplate.opsForValue().get(cacheKey);
-            if (cachedJson != null && !cachedJson.isBlank()) {
-                // 因为 PageResult 是泛型类，需要特殊处理
-                // 直接查询数据库确保数据准确性
-            }
-        } catch (Exception e) {
-            log.warn("读取热门课程缓存失败, userId={}, range={}", userId, effectiveRange, e);
-        }
+        // "学习最多的课程"不限制时间范围，始终展示全量课程排行
+        String cacheKey = LEARNER_COURSE_RANK_CACHE_PREFIX + "top:" + userId + ":ALL:" + query.getPage() + ":" + query.getSize();
 
         LambdaQueryWrapper<UserLearningRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserLearningRecord::getUserId, userId);
-        applyRangeFilter(wrapper, effectiveRange);
 
         List<UserLearningRecord> records = userLearningRecordMapper.selectList(wrapper);
 
@@ -497,7 +501,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
             String json = objectMapper.writeValueAsString(result);
             redisTemplate.opsForValue().set(cacheKey, json, LEARNER_RECORD_STATS_CACHE_TTL_SECONDS, TimeUnit.SECONDS);
         } catch (Exception e) {
-            log.warn("写入热门课程缓存失败, userId={}, range={}", userId, effectiveRange, e);
+            log.warn("写入热门课程缓存失败, userId={}", userId, e);
         }
 
         return result;
@@ -1086,6 +1090,35 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     }
 
     // ---------- 课件分布 ----------
+
+    /**
+     * 从 user_course_resource_progress 表直接查询已完成的课件分布，
+     * 不再依赖 action_type=3 的学习记录，确保数据始终准确
+     */
+    private List<ResourceDistributionVO> buildResourceDistributionFromProgress(Long userId, LocalDateTime rangeStart) {
+        LambdaQueryWrapper<UserCourseResourceProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserCourseResourceProgress::getUserId, userId)
+               .eq(UserCourseResourceProgress::getStatus, 2);
+        if (rangeStart != null) {
+            wrapper.ge(UserCourseResourceProgress::getCompletedAt, rangeStart);
+        }
+        List<UserCourseResourceProgress> completedResources = userCourseResourceProgressMapper.selectList(wrapper);
+
+        Map<Integer, Long> grouped = completedResources.stream()
+                .filter(r -> r.getResourceType() != null)
+                .collect(Collectors.groupingBy(UserCourseResourceProgress::getResourceType, Collectors.counting()));
+
+        long articleCount = grouped.getOrDefault(1, 0L);
+        long videoCount = grouped.getOrDefault(2, 0L);
+        long pptCount = grouped.getOrDefault(3, 0L);
+        long total = videoCount + articleCount + pptCount;
+
+        List<ResourceDistributionVO> result = new ArrayList<>();
+        result.add(buildDistributionItem("VIDEO", "视频", videoCount, total));
+        result.add(buildDistributionItem("ARTICLE", "文章", articleCount, total));
+        result.add(buildDistributionItem("PPT", "PPT", pptCount, total));
+        return result;
+    }
 
     private List<ResourceDistributionVO> buildResourceDistribution(List<UserLearningRecord> completedRecords) {
         Map<Integer, Long> grouped = completedRecords.stream()

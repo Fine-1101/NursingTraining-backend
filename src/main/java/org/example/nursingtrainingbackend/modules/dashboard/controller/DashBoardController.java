@@ -6,6 +6,7 @@ import org.example.nursingtrainingbackend.modules.course.mapper.CourseMapper;
 import org.example.nursingtrainingbackend.modules.dashboard.service.DashboardService;
 import org.example.nursingtrainingbackend.modules.dashboard.vo.CourseLearningTrendVO;
 import org.example.nursingtrainingbackend.modules.dashboard.vo.DashboardVO;
+import org.example.nursingtrainingbackend.modules.dashboard.vo.LearningTrendDrillVO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -57,6 +58,16 @@ public class DashBoardController {
             @RequestParam String granularity
     ) {
         CourseLearningTrendVO vo = dashboardService.getCourseLearningTrend(courseId, range, granularity);
+        return Result.success(vo);
+    }
+
+    @GetMapping("/dashboard/learning-trend-drill")
+    public Result<LearningTrendDrillVO> getLearningTrendDrill(
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam(required = false) Integer weekIndex
+    ) {
+        LearningTrendDrillVO vo = dashboardService.getLearningTrendDrill(year, month, weekIndex);
         return Result.success(vo);
     }
 }
