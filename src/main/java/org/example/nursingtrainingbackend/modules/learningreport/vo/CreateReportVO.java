@@ -12,7 +12,9 @@ public record CreateReportVO(
         Integer progress,
         String reportType,
         String reportMode,
-        LocalDateTime periodStart,
-        LocalDateTime periodEnd
+        LocalDateTime actualPeriodStart,
+        LocalDateTime actualPeriodEnd,
+        Integer estimatedWaitSeconds,
+        boolean reused
 ) {
 }

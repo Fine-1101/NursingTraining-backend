@@ -17,6 +17,8 @@ public record CreateReportRequest(
 
         LocalDate periodEnd,
 
+        Long courseId,
+
         Boolean forceRegenerate
 ) {
 

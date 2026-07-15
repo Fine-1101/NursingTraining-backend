@@ -180,12 +180,18 @@ public enum ErrorCode {
         6505, "报告生成次数超过限制", HttpStatus.TOO_MANY_REQUESTS),
     LEARNING_REPORT_DATA_UNCHANGED(
         6506, "学习数据未变化，无需重新生成", HttpStatus.CONFLICT),
+    LEARNING_REPORT_COURSE_REQUIRED(
+        6507, "单课程报告缺少课程ID", HttpStatus.BAD_REQUEST),
+    LEARNING_REPORT_COURSE_UNAVAILABLE(
+        6508, "课程不存在或当前用户不可访问", HttpStatus.NOT_FOUND),
     AI_PROVIDER_UNAVAILABLE(
         6509, "AI服务暂不可用", HttpStatus.SERVICE_UNAVAILABLE),
     AI_PROVIDER_TIMEOUT(
         6510, "AI报告生成超时", HttpStatus.GATEWAY_TIMEOUT),
     AI_RESPONSE_INVALID(
-        6511, "AI报告格式校验失败", HttpStatus.INTERNAL_SERVER_ERROR);
+        6511, "AI报告格式校验失败", HttpStatus.INTERNAL_SERVER_ERROR),
+    LEARNING_REPORT_FEEDBACK_INVALID(
+        6512, "学习报告反馈内容不合法", HttpStatus.BAD_REQUEST);
 
     private final int code;
     private final String message;
