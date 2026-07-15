@@ -35,6 +35,6 @@ public interface CourseMapper extends BaseMapper<Course> {
     @Select("SELECT * FROM course_point WHERE course_id = #{id} ORDER BY sort ASC")
     CoursePoint selectPointByCourseId(Long id);
 
-    @Select("SELECT id, title FROM course")
+    @Select("SELECT id, title FROM course WHERE deleted_at IS NULL ORDER BY id")
     List<Map<String, Object>> selectMap();
 }
