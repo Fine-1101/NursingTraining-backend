@@ -141,31 +141,26 @@ public record LearningReportProperties(
             /**
              * AI 供应商标识。
              */
-            @NotBlank
             String provider,
 
             /**
              * AI 接口基础地址。
              */
-            @NotBlank
             String baseUrl,
 
             /**
              * AI 接口密钥。
              */
-            @NotBlank
             String apiKey,
 
             /**
              * 模型名称。
              */
-            @NotBlank
             String model,
 
             /**
              * 对话补全接口路径。
              */
-            @NotBlank
             String chatPath,
 
             /**
@@ -199,13 +194,11 @@ public record LearningReportProperties(
             /**
              * Prompt 版本。
              */
-            @NotBlank
             String promptVersion,
 
             /**
              * AI 输出结构版本。
              */
-            @NotBlank
             String schemaVersion
     ) {
     }

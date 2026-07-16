@@ -22,6 +22,10 @@ import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseProg
 import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseResourceProgressMapper;
 import org.example.nursingtrainingbackend.modules.learning.service.LearnerStudy;
 import org.example.nursingtrainingbackend.modules.learning.vo.CourseStudyVO;
+import org.example.nursingtrainingbackend.modules.user.entity.Department;
+import org.example.nursingtrainingbackend.modules.user.mapper.DepartmentMapper;
+import org.example.nursingtrainingbackend.modules.tag.entity.Tag;
+import org.example.nursingtrainingbackend.modules.tag.mapper.TagMapper;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.SecurityUtils;
@@ -64,6 +68,9 @@ public class LearnerStudyImpl implements LearnerStudy {
     private final UserCoursePointProgressMapper userCoursePointProgressMapper;
     private final UserCourseResourceProgressMapper userCourseResourceProgressMapper;
     private final UserLearningRecordMapper userLearningRecordMapper;
+    private final DepartmentMapper departmentMapper;
+    private final TagMapper tagMapper;
+    private final CourseTagMapper courseTagMapper;
     private final StringRedisTemplate redisTemplate;
 
     @Override
@@ -116,6 +123,53 @@ public class LearnerStudyImpl implements LearnerStudy {
         vo.setTabs(tabsVO);
         vo.setNavigation(navigationVO);
         return vo;
+    }
+
+    @Override
+    @Transactional
+    public void completeResource(Long courseId, Long coursePointId, Integer resourceType, Long resourceId) {
+        Long userId = SecurityUtils.currentUserId();
+        validateLearner(userId);
+        LocalDateTime now = LocalDateTime.now();
+
+        LambdaQueryWrapper<UserCourseResourceProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserCourseResourceProgress::getUserId, userId)
+               .eq(UserCourseResourceProgress::getCourseId, courseId)
+               .eq(UserCourseResourceProgress::getCoursePointId, coursePointId)
+               .eq(UserCourseResourceProgress::getResourceType, resourceType)
+               .eq(UserCourseResourceProgress::getResourceId, resourceId);
+        UserCourseResourceProgress progress = userCourseResourceProgressMapper.selectOne(wrapper);
+
+        if (progress == null) {
+            progress = new UserCourseResourceProgress();
+            progress.setUserId(userId);
+            progress.setCourseId(courseId);
+            progress.setCoursePointId(coursePointId);
+            progress.setResourceType(resourceType);
+            progress.setResourceId(resourceId);
+            progress.setStartedAt(now);
+            progress.setCreatedAt(now);
+        }
+
+        progress.setStatus(2);
+        progress.setCompletedAt(now);
+        progress.setProgressPercent(BigDecimal.valueOf(100));
+        progress.setUpdatedAt(now);
+
+        if (progress.getId() == null) {
+            userCourseResourceProgressMapper.insert(progress);
+        } else {
+            userCourseResourceProgressMapper.updateById(progress);
+        }
+
+        try {
+            writeResourceCompleteRecordIfNeeded(userId, courseId, coursePointId, resourceType, resourceId, now);
+        } catch (Exception e) {
+            log.error("写入资源完成记录失败, userId={}, resourceId={}", userId, resourceId, e);
+        }
+
+        recalculatePointProgress(userId, courseId, coursePointId, now);
+        recalculateCourseProgress(userId, courseId, now);
     }
 
     @Override
@@ -631,6 +685,27 @@ public class LearnerStudyImpl implements LearnerStudy {
         vo.setCourseId(course.getId());
         vo.setTitle(course.getTitle());
         vo.setCoverUrl(course.getCoverUrl());
+
+        // 讲师信息
+        if (course.getInstructorId() != null) {
+            User instructor = userMapper.selectById(course.getInstructorId());
+            if (instructor != null) {
+                vo.setInstructorName(instructor.getRealName());
+                if (instructor.getDeptId() != null) {
+                    Department dept = departmentMapper.selectById(instructor.getDeptId());
+                    vo.setInstructorDepartment(dept != null ? dept.getName() : null);
+                }
+            }
+        }
+
+        // 课程标签
+        List<CourseTag> courseTags = courseTagMapper.selectList(
+                new LambdaQueryWrapper<CourseTag>().eq(CourseTag::getCourseId, course.getId()));
+        if (!courseTags.isEmpty()) {
+            List<Long> tagIds = courseTags.stream().map(CourseTag::getTagId).toList();
+            List<Tag> tags = tagMapper.selectBatchIds(tagIds);
+            vo.setTags(tags.stream().map(Tag::getName).toList());
+        }
 
         // 课程点总数（启用、未删除）
         Long pointCount = coursePointMapper.selectCount(

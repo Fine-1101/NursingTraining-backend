@@ -22,7 +22,6 @@ import java.util.Map;
 @RequestMapping("/api/files")
 @RequiredArgsConstructor
 public class FileController {
-    @Qualifier("ossFileServiceImpl")
     private final FileService fileService;
 
     /**

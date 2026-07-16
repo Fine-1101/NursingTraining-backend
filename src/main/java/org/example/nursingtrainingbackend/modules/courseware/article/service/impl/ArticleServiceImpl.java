@@ -49,7 +49,6 @@ public class ArticleServiceImpl implements ArticleService {
     private final ArticleAttachmentProperties attachmentProperties;
     private final ArticleStatSnapshotMapper snapshotMapper;
 
-    @Resource(name = "ossFileServiceImpl")
     private final FileService fileService;
     
     @Override

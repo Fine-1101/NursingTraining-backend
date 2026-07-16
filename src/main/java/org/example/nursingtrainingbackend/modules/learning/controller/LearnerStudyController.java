@@ -43,4 +43,18 @@ public class LearnerStudyController {
         learnerStudy.reportVideoProgress(courseId, coursePointId, videoId, request);
         return Result.success(null);
     }
+
+    /**
+     * 完成文章/PPT资源学习
+     * POST /api/learner/courses/{courseId}/points/{coursePointId}/resources/complete
+     */
+    @PostMapping("/{courseId}/points/{coursePointId}/resources/complete")
+    public Result<Void> completeResource(
+            @PathVariable Long courseId,
+            @PathVariable Long coursePointId,
+            @RequestParam Integer resourceType,
+            @RequestParam Long resourceId) {
+        learnerStudy.completeResource(courseId, coursePointId, resourceType, resourceId);
+        return Result.success(null);
+    }
 }

@@ -16,15 +16,43 @@
             u.phone AS maskedPhone,
             u.status,
             u.created_at AS createdAt,
-            COALESCE(avg_prog.avg_progress, 0) AS averageProgressPercent
+            CASE
+                WHEN total.required_points = 0 THEN 0
+                ELSE ROUND(COALESCE(completed.completed_required_points, 0) * 100.0 / total.required_points, 2)
+            END AS averageProgressPercent
         FROM `user` u
         LEFT JOIN department d ON u.dept_id = d.id
         LEFT JOIN (
-            SELECT user_id,
-                   ROUND(AVG(COALESCE(progress_percent, 0)), 2) AS avg_progress
-            FROM user_course_progress
-            GROUP BY user_id
-        ) avg_prog ON u.id = avg_prog.user_id
+            SELECT
+                cd.department_id,
+                COUNT(cp.id) AS required_points
+            FROM course_department cd
+            INNER JOIN course c ON cd.course_id = c.id
+                AND c.status = 1
+                AND c.deleted_at IS NULL
+            INNER JOIN course_point cp ON cp.course_id = c.id
+                AND cp.status = 1
+                AND cp.deleted_at IS NULL
+                AND cp.required = 1
+            GROUP BY cd.department_id
+        ) total ON u.dept_id = total.department_id
+        LEFT JOIN (
+            SELECT
+                uc.user_id,
+                cd.department_id,
+                COUNT(uc.id) AS completed_required_points
+            FROM user_course_point_progress uc
+            INNER JOIN course_point cp ON uc.course_point_id = cp.id
+                AND cp.status = 1
+                AND cp.deleted_at IS NULL
+                AND cp.required = 1
+            INNER JOIN course c ON cp.course_id = c.id
+                AND c.status = 1
+                AND c.deleted_at IS NULL
+            INNER JOIN course_department cd ON c.id = cd.course_id
+            WHERE uc.status = 2
+            GROUP BY uc.user_id, cd.department_id
+        ) completed ON u.id = completed.user_id AND u.dept_id = completed.department_id
         WHERE u.role_type = 1
           AND u.deleted_at IS NULL
         <if test="keyword != null and keyword != ''">
