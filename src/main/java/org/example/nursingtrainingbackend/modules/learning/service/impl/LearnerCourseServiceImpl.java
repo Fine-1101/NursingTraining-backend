@@ -26,8 +26,13 @@ import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseProg
 import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseResourceProgressMapper;
 import org.example.nursingtrainingbackend.modules.learning.service.LearnerCourseService;
 import org.example.nursingtrainingbackend.modules.learning.vo.*;
+import org.example.nursingtrainingbackend.modules.course.mapper.CourseTagMapper;
+import org.example.nursingtrainingbackend.modules.tag.entity.Tag;
+import org.example.nursingtrainingbackend.modules.tag.mapper.TagMapper;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
+import org.example.nursingtrainingbackend.modules.user.entity.Department;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
+import org.example.nursingtrainingbackend.modules.user.mapper.DepartmentMapper;
 import org.example.nursingtrainingbackend.security.SecurityUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -67,6 +72,9 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
     private final UserCourseProgressMapper userCourseProgressMapper;
     private final UserCoursePointProgressMapper userCoursePointProgressMapper;
     private final UserCourseResourceProgressMapper userCourseResourceProgressMapper;
+    private final DepartmentMapper departmentMapper;
+    private final TagMapper tagMapper;
+    private final CourseTagMapper courseTagMapper;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -274,7 +282,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         Map<String, UserCourseResourceProgress> resourceProgressMap = loadResourceProgressMap(structure, userId);
 
         // 6. 组装响应：缓存结构 + 实时进度
-        return buildDetailFromStructure(structure, courseDept, courseProgress,
+        return buildDetailFromStructure(structure, course, courseDept, courseProgress,
                 pointProgressMap, resourceProgressMap);
     }
 
@@ -328,7 +336,21 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
                       .orderByAsc(CourseChapter::getSort);
         List<CourseChapter> chapters = courseChapterMapper.selectList(chapterWrapper);
 
-        if (chapters.isEmpty()) {
+        List<Long> chapterIds = chapters.isEmpty() ? Collections.emptyList() : chapters.stream().map(CourseChapter::getId).toList();
+
+        // 查询所有启用课程点（包括有章节和无章节的课程点）
+        LambdaQueryWrapper<CoursePoint> pointWrapper = new LambdaQueryWrapper<>();
+        pointWrapper.eq(CoursePoint::getStatus, 1)
+                    .isNull(CoursePoint::getDeletedAt)
+                    .orderByAsc(CoursePoint::getSort);
+        if (!chapterIds.isEmpty()) {
+            pointWrapper.in(CoursePoint::getChapterId, chapterIds);
+        } else {
+            pointWrapper.isNull(CoursePoint::getChapterId);
+        }
+        List<CoursePoint> allPoints = coursePointMapper.selectList(pointWrapper);
+
+        if (allPoints.isEmpty()) {
             return CourseStructureCacheVO.builder()
                     .courseId(courseId)
                     .title(course.getTitle())
@@ -340,16 +362,6 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
                     .chapters(Collections.emptyList())
                     .build();
         }
-
-        List<Long> chapterIds = chapters.stream().map(CourseChapter::getId).toList();
-
-        // 查询所有启用课程点
-        LambdaQueryWrapper<CoursePoint> pointWrapper = new LambdaQueryWrapper<>();
-        pointWrapper.in(CoursePoint::getChapterId, chapterIds)
-                    .eq(CoursePoint::getStatus, 1)
-                    .isNull(CoursePoint::getDeletedAt)
-                    .orderByAsc(CoursePoint::getSort);
-        List<CoursePoint> allPoints = coursePointMapper.selectList(pointWrapper);
         List<Long> pointIds = allPoints.stream().map(CoursePoint::getId).toList();
 
         // 加载静态资源元数据（不含进度）
@@ -359,9 +371,12 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         Map<Long, List<CoursePoint>> pointsByChapter = allPoints.stream()
                 .collect(Collectors.groupingBy(CoursePoint::getChapterId));
 
-        List<CourseStructureCacheVO.ChapterItem> chapterItems = chapters.stream().map(chapter -> {
-            List<CoursePoint> chapterPoints = pointsByChapter.getOrDefault(chapter.getId(), Collections.emptyList());
-            List<CourseStructureCacheVO.PointItem> pointItems = chapterPoints.stream().map(point ->
+        List<CourseStructureCacheVO.ChapterItem> chapterItems = new ArrayList<>();
+
+        if (chapters.isEmpty()) {
+            // 无章节时，创建虚拟章节展示所有课程点
+            List<CoursePoint> rootPoints = pointsByChapter.getOrDefault(null, Collections.emptyList());
+            List<CourseStructureCacheVO.PointItem> pointItems = rootPoints.stream().map(point ->
                     CourseStructureCacheVO.PointItem.builder()
                             .pointId(point.getId())
                             .title(point.getTitle())
@@ -372,13 +387,35 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
                             .build()
             ).collect(Collectors.toList());
 
-            return CourseStructureCacheVO.ChapterItem.builder()
-                    .chapterId(chapter.getId())
-                    .title(chapter.getTitle())
-                    .sort(chapter.getSort())
+            chapterItems.add(CourseStructureCacheVO.ChapterItem.builder()
+                    .chapterId(null)
+                    .title("课程内容")
+                    .sort(0)
                     .points(pointItems)
-                    .build();
-        }).collect(Collectors.toList());
+                    .build());
+        } else {
+            // 有章节时，按章节分组展示
+            chapterItems = chapters.stream().map(chapter -> {
+                List<CoursePoint> chapterPoints = pointsByChapter.getOrDefault(chapter.getId(), Collections.emptyList());
+                List<CourseStructureCacheVO.PointItem> pointItems = chapterPoints.stream().map(point ->
+                        CourseStructureCacheVO.PointItem.builder()
+                                .pointId(point.getId())
+                                .title(point.getTitle())
+                                .description(point.getDescription())
+                                .required(point.getRequired() != null && point.getRequired() == 1)
+                                .sort(point.getSort())
+                                .resources(pointResourcesMap.getOrDefault(point.getId(), Collections.emptyList()))
+                                .build()
+                ).collect(Collectors.toList());
+
+                return CourseStructureCacheVO.ChapterItem.builder()
+                        .chapterId(chapter.getId())
+                        .title(chapter.getTitle())
+                        .sort(chapter.getSort())
+                        .points(pointItems)
+                        .build();
+            }).collect(Collectors.toList());
+        }
 
         Long firstPointId = allPoints.isEmpty() ? null : allPoints.get(0).getId();
 
@@ -445,7 +482,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
                         .orderByAsc(CoursePointPpt::getSort));
         Set<Long> pptIds = pptRels.stream().map(CoursePointPpt::getPptId).collect(Collectors.toSet());
         Map<Long, Ppt> pptMap = pptIds.isEmpty() ? Collections.emptyMap() :
-                pptMapper.selectList(new LambdaQueryWrapper<Ppt>().in(Ppt::getId, pptIds))
+                pptMapper.selectList(new LambdaQueryWrapper<Ppt>().in(Ppt::getId, pptIds).eq(Ppt::getStatus, 1).isNull(Ppt::getDeletedAt))
                         .stream().collect(Collectors.toMap(Ppt::getId, p -> p));
         for (CoursePointPpt rel : pptRels) {
             Ppt ppt = pptMap.get(rel.getPptId());
@@ -521,6 +558,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
      * 用缓存的课程结构 + 实时进度数据组装 LearnerCourseDetailVO
      */
     private LearnerCourseDetailVO buildDetailFromStructure(CourseStructureCacheVO structure,
+                                                            Course course,
                                                             CourseDepartment courseDept,
                                                             UserCourseProgress courseProgress,
                                                             Map<Long, UserCoursePointProgress> pointProgressMap,
@@ -534,6 +572,27 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         vo.setCourseType(courseDept != null && courseDept.getRequired() != null && courseDept.getRequired() == 1 ? "REQUIRED" : "OPTIONAL");
         vo.setTotalPointCount(structure.getTotalPointCount());
         vo.setPointCount(structure.getTotalPointCount());
+
+        // 讲师信息
+        if (course.getInstructorId() != null) {
+            User instructor = userMapper.selectById(course.getInstructorId());
+            if (instructor != null) {
+                vo.setInstructorName(instructor.getRealName() != null ? instructor.getRealName() : instructor.getUsername());
+                if (instructor.getDeptId() != null) {
+                    Department dept = departmentMapper.selectById(instructor.getDeptId());
+                    vo.setInstructorDepartment(dept != null ? dept.getName() : null);
+                }
+            }
+        }
+
+        // 课程标签
+        List<CourseTag> courseTags = courseTagMapper.selectList(
+                new LambdaQueryWrapper<CourseTag>().eq(CourseTag::getCourseId, course.getId()));
+        if (!courseTags.isEmpty()) {
+            List<Long> tagIds = courseTags.stream().map(CourseTag::getTagId).toList();
+            List<Tag> tags = tagMapper.selectBatchIds(tagIds);
+            vo.setTags(tags.stream().map(Tag::getName).toList());
+        }
 
         // 统计章节数
         int chapterCount = structure.getChapters() != null ? structure.getChapters().size() : 0;
@@ -948,7 +1007,9 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         Map<Long, Ppt> pptMap = Collections.emptyMap();
         if (!pptIds.isEmpty()) {
             LambdaQueryWrapper<Ppt> pWrapper = new LambdaQueryWrapper<>();
-            pWrapper.in(Ppt::getId, pptIds);
+            pWrapper.in(Ppt::getId, pptIds)
+                    .eq(Ppt::getStatus, 1)
+                    .isNull(Ppt::getDeletedAt);
             pptMap = pptMapper.selectList(pWrapper).stream()
                     .collect(Collectors.toMap(Ppt::getId, p -> p));
         }
@@ -1020,6 +1081,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
             res.setResourceType("PPT");
             res.setResourceId(ppt.getId());
             res.setTitle(ppt.getTitle());
+            res.setPageCount(ppt.getPageCount());
 
             String key = "PPT:" + ppt.getId() + ":" + rel.getCoursePointId();
             UserCourseResourceProgress rp = resourceProgressMap.get(key);

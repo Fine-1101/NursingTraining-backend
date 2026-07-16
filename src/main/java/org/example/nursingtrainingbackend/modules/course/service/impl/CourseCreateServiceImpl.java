@@ -73,7 +73,6 @@ public class CourseCreateServiceImpl implements CourseCreateService {
     private VideoMapper videoMapper;
     @Autowired
     private PptMapper pptMapper;
-    @Qualifier("ossFileServiceImpl")
     @Autowired
     private FileService fileService;
     private final ApplicationEventPublisher eventPublisher;

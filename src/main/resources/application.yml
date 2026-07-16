@@ -9,7 +9,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/nursing_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
+    password: ${DB_PASSWORD:127315jj}
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
@@ -93,4 +93,3 @@ app:
       scan-interval: 1m
       pending-timeout: 5m
       generating-timeout: 3m
-

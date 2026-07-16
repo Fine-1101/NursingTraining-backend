@@ -6,5 +6,6 @@ import org.example.nursingtrainingbackend.modules.learning.vo.CourseStudyVO;
 public interface LearnerStudy {
     CourseStudyVO getCourseStudy(Long courseId, Long pointId, String activeType);
     void reportVideoProgress(Long courseId, Long coursePointId, Long videoId, VideoProgressRequest request);
+    void completeResource(Long courseId, Long coursePointId, Integer resourceType, Long resourceId);
 
 }

@@ -1,12 +1,12 @@
 package org.example.nursingtrainingbackend.modules.file.job;
 
 import com.aliyun.oss.OSS;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.nursingtrainingbackend.common.annotation.DistributedLock;
 import org.example.nursingtrainingbackend.config.OssConfig;
 import org.example.nursingtrainingbackend.modules.file.entity.FileUploadRecord;
 import org.example.nursingtrainingbackend.modules.file.mapper.FileUploadRecordMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,12 +20,16 @@ import java.util.List;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class OrphanFileCleanupJob {
 
-    private final FileUploadRecordMapper fileUploadRecordMapper;
-    private final OSS ossClient;
-    private final OssConfig ossConfig;
+    @Autowired
+    private FileUploadRecordMapper fileUploadRecordMapper;
+
+    @Autowired(required = false)
+    private OSS ossClient;
+
+    @Autowired(required = false)
+    private OssConfig ossConfig;
 
     /**
      * 每天凌晨2点执行

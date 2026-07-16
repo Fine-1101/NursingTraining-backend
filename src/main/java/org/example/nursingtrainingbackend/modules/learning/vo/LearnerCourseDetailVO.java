@@ -54,6 +54,18 @@ public class LearnerCourseDetailVO {
     /** 按钮文案 */
     private String buttonText;
 
+    /** 讲师姓名 */
+    private String instructorName;
+
+    /** 讲师所属科室 */
+    private String instructorDepartment;
+
+    /** 讲师职称 */
+    private String instructorTitle;
+
+    /** 课程标签列表 */
+    private List<String> tags;
+
     /** 章节列表 */
     private List<ChapterVO> chapters;
 
@@ -127,5 +139,8 @@ public class LearnerCourseDetailVO {
 
         /** 视频当前播放位置（秒），仅VIDEO类型 */
         private Integer lastPositionSeconds;
+
+        /** PPT页数，仅PPT类型 */
+        private Integer pageCount;
     }
 }

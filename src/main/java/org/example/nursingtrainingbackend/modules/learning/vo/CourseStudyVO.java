@@ -42,6 +42,12 @@ public class CourseStudyVO {
         private Integer completedPointCount;
         /** 启用、未删除课程点总数 */
         private Integer pointCount;
+        /** 讲师姓名 */
+        private String instructorName;
+        /** 讲师所属科室 */
+        private String instructorDepartment;
+        /** 课程标签列表 */
+        private List<String> tags;
     }
 
     /**

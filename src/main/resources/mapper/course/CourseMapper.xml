@@ -19,14 +19,10 @@
                 WHERE usr.role_type = 1
                   AND usr.status = 1
                   AND usr.deleted_at IS NULL
-                  AND (
-                      (c.scope_type = 1)
-                      OR
-                      (c.scope_type = 2 AND usr.dept_id IN (
-                          SELECT cd.department_id
-                          FROM course_department cd
-                          WHERE cd.course_id = c.id
-                      ))
+                  AND usr.dept_id IN (
+                      SELECT cd.department_id
+                      FROM course_department cd
+                      WHERE cd.course_id = c.id
                   )
             ) AS studentCount,
             CASE c.status
@@ -65,14 +61,10 @@
                 WHERE usr.role_type = 1
                   AND usr.status = 1
                   AND usr.deleted_at IS NULL
-                  AND (
-                      (c.scope_type = 1)
-                      OR
-                      (c.scope_type = 2 AND usr.dept_id IN (
-                          SELECT cd.department_id
-                          FROM course_department cd
-                          WHERE cd.course_id = c.id
-                      ))
+                  AND usr.dept_id IN (
+                      SELECT cd.department_id
+                      FROM course_department cd
+                      WHERE cd.course_id = c.id
                   )
             ) AS studentCount,
             CASE c.status

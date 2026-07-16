@@ -3,7 +3,6 @@ package org.example.nursingtrainingbackend.modules.courseware.video.service.impl
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import org.example.nursingtrainingbackend.common.event.CacheEvictionEvent;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.page.PageResult;
@@ -22,6 +21,7 @@ import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.example.nursingtrainingbackend.security.AuthenticatedUser;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -52,21 +52,39 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class VideoServiceImpl implements VideoService {
 
     private static final String VIDEO_PLAY_URL_CACHE_PREFIX = "nursing:video:play-url:v1:";
 
-    private final VideoMapper videoMapper;
-    private final UserMapper userMapper;
-    private final VideoStatSnapshotMapper snapshotMapper;
-    private final OSS ossClient;
-    private final OssConfig ossConfig;
-    private final CoursePointVideoMapper coursePointVideoMapper;
-    private final FileService fileService;
-    private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
-    private final ApplicationEventPublisher eventPublisher;
+    @Autowired
+    private VideoMapper videoMapper;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private VideoStatSnapshotMapper snapshotMapper;
+
+    @Autowired
+    private CoursePointVideoMapper coursePointVideoMapper;
+
+    @Autowired
+    private FileService fileService;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
+    @Autowired(required = false)
+    private OSS ossClient;
+
+    @Autowired(required = false)
+    private OssConfig ossConfig;
 
     @Override
     public VideoPlayUrlVO getVideoPlayUrl(Long id, Integer expiresIn) {

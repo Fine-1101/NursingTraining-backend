@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.nursingtrainingbackend.common.exception.BusinessException;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
@@ -21,11 +20,9 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptDetailVO;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptListItem;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptOverviewVO;
 import org.example.nursingtrainingbackend.modules.file.service.FileService;
-//import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,16 +38,25 @@ import java.util.Set;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class PptServiceImpl implements PptService {
 
-    private final PptMapper pptMapper;
-    private final UserMapper userMapper;
-    private final CoursePptMapper coursePptMapper;
-    private final OSS ossClient;
-    private final OssProperties ossProperties;
-    @Qualifier("ossFileServiceImpl")
-    private final FileService fileService;
+    @Autowired
+    private PptMapper pptMapper;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private CoursePptMapper coursePptMapper;
+
+    @Autowired
+    private FileService fileService;
+
+    @Autowired(required = false)
+    private OSS ossClient;
+
+    @Autowired(required = false)
+    private OssProperties ossProperties;
 
 
     private static final Set<String> VALID_TRANSITIONS = new HashSet<>(Arrays.asList(
