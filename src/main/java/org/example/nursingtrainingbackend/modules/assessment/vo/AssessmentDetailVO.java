@@ -29,6 +29,7 @@ public class AssessmentDetailVO {
     private BigDecimal totalScore;
     private BigDecimal passScore;
     private Integer maxAttempts;
+    private Integer difficultyLevel;
     private Integer status;
 
     private List<DrawRuleVO> drawRules;
@@ -38,6 +39,7 @@ public class AssessmentDetailVO {
     @AllArgsConstructor
     public static class DrawRuleVO {
         private Integer questionType;
+        private Integer difficulty;
         private Integer questionCount;
         private BigDecimal scorePerQuestion;
         /** 可用题目数 */

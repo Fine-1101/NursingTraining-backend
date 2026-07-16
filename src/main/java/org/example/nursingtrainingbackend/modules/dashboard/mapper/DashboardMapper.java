@@ -25,6 +25,10 @@ public interface DashboardMapper {
     List<TrendRow> selectMonthlyLearningTrend(@Param("startDate") String startDate,
                                                @Param("endDate") String endDate);
 
+    /** 按天统计学习趋势 */
+    List<TrendRow> selectDailyLearningTrend(@Param("startDate") String startDate,
+                                             @Param("endDate") String endDate);
+
     /** 按周统计学习趋势 */
     List<TrendRow> selectWeeklyLearningTrend(@Param("startDate") String startDate,
                                               @Param("endDate") String endDate);

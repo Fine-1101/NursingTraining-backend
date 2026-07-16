@@ -15,6 +15,7 @@ public record QuestionCapacityVO(
 
     public record ItemVO(
             Integer questionType,
+            Integer difficulty,
             Integer requiredCount,
             Long availableCount,
             Boolean sufficient

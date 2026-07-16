@@ -37,6 +37,9 @@ public class AuthServiceImpl implements AuthService {
         if (!Integer.valueOf(1).equals(user.getStatus())) {
             throw new BusinessException(ErrorCode.USER_DISABLED);
         }
+        if (!Integer.valueOf(1).equals(user.getRoleType())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "仅允许学生账号登录");
+        }
         AuthenticatedUser principal = new AuthenticatedUser(user.getId(), user.getUsername(), user.getRealName(), String.valueOf(user.getRoleType()));
         return new LoginResponse("Bearer", jwtService.createToken(principal), jwtService.expirationSeconds(), UserInfo.from(principal));
     }
@@ -44,7 +47,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public LoginResponse register(RegisterRequest request) {
         // 校验角色类型：只允许 1-学员 2-讲师
-        if (request.roleType() != 1 && request.roleType() != 2) {
+        if (!Integer.valueOf(1).equals(request.roleType())) {
             throw new BusinessException(ErrorCode.INVALID_ROLE_TYPE);
         }
         // 检查用户名是否已存在
@@ -66,7 +69,7 @@ public class AuthServiceImpl implements AuthService {
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRealName(request.realName());
         user.setDeptId(request.deptId());
-        user.setRoleType(request.roleType());
+        user.setRoleType(1);
         user.setStatus(1);
         userMapper.insert(user);
         // 注册成功后自动登录

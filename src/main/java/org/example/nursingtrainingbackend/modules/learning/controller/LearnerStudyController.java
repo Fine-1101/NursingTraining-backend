@@ -6,6 +6,13 @@ import org.example.nursingtrainingbackend.common.result.Result;
 import org.example.nursingtrainingbackend.modules.learning.dto.VideoProgressRequest;
 import org.example.nursingtrainingbackend.modules.learning.service.LearnerStudy;
 import org.example.nursingtrainingbackend.modules.learning.vo.CourseStudyVO;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptPreviewFile;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+
+import java.io.IOException;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -56,5 +63,20 @@ public class LearnerStudyController {
             @RequestParam Long resourceId) {
         learnerStudy.completeResource(courseId, coursePointId, resourceType, resourceId);
         return Result.success(null);
+    }
+
+    /** 返回可内嵌显示的学员端 PPT PDF 流。 */
+    @GetMapping(value = "/points/{coursePointId}/ppts/{pptId}/preview", produces = MediaType.APPLICATION_PDF_VALUE)
+    public void previewPpt(@PathVariable Long coursePointId,
+                           @PathVariable Long pptId,
+                           HttpServletResponse response) throws IOException {
+        try (PptPreviewFile preview = learnerStudy.getPptPreview(coursePointId, pptId)) {
+            response.setContentType(MediaType.APPLICATION_PDF_VALUE);
+            response.setContentLengthLong(preview.contentLength());
+            response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                    ContentDisposition.inline().filename("ppt-preview-" + pptId + ".pdf").build().toString());
+            preview.inputStream().transferTo(response.getOutputStream());
+            response.flushBuffer();
+        }
     }
 }

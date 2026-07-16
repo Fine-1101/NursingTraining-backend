@@ -1,6 +1,7 @@
 package org.example.nursingtrainingbackend.modules.courseware.ppt.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.nursingtrainingbackend.common.result.Result;
@@ -12,10 +13,16 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.service.PptServ
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptDetailVO;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptListItem;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptOverviewVO;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptPreviewFile;
 import org.example.nursingtrainingbackend.security.AuthenticatedUser;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/admin/ppts")
@@ -58,6 +65,18 @@ public class PptController {
         return Result.success(pptService.getPptDetail(id));
     }
 
+    @GetMapping(value = "/{id}/preview", produces = MediaType.APPLICATION_PDF_VALUE)
+    public void previewPpt(@PathVariable Long id, HttpServletResponse response) throws IOException {
+        try (PptPreviewFile preview = pptService.getPreviewFile(id)) {
+            response.setContentType(MediaType.APPLICATION_PDF_VALUE);
+            response.setContentLengthLong(preview.contentLength());
+            response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                    ContentDisposition.inline().filename("ppt-preview-" + id + ".pdf").build().toString());
+            preview.inputStream().transferTo(response.getOutputStream());
+            response.flushBuffer();
+        }
+    }
+
     @PutMapping("/{id}")
     public Result<Ppt> updatePpt(@PathVariable Long id,
                                  @Valid @RequestBody UpdatePptRequest request) {
@@ -76,6 +95,12 @@ public class PptController {
             @RequestParam(defaultValue = "600") Integer expiresIn) {
         String url = pptService.getDownloadUrl(id, expiresIn);
         return Result.success(new DownloadUrlResponse(url));
+    }
+
+    @PostMapping("/{id}/convert")
+    public Result<Void> convertPpt(@PathVariable Long id) {
+        pptService.requestConversion(id);
+        return Result.success();
     }
 
     @DeleteMapping("/{id}")

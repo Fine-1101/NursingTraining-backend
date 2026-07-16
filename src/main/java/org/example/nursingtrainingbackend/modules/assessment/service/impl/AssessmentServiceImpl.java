@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -67,7 +68,9 @@ public class AssessmentServiceImpl implements AssessmentService {
     @Override
     @Transactional
     public AssessmentCreateResponseVO createAssessment(AssessmentCreateRequest request) {
-        validateDrawRules(request.drawRules());
+        validateDifficultyLevel(request.difficultyLevel());
+        List<AssessmentCreateRequest.DrawRuleItem> drawRules = expandDrawRules(request.drawRules(), request.difficultyLevel());
+        validateDrawRules(drawRules);
         validateTime(request.startAt(), request.endAt());
         validatePassScore(request.passScore());
 
@@ -76,7 +79,7 @@ public class AssessmentServiceImpl implements AssessmentService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        BigDecimal totalScore = calculateTotalScore(request.drawRules());
+        BigDecimal totalScore = calculateTotalScore(drawRules);
 
         Assessment assessment = new Assessment();
         assessment.setCourseId(request.courseId());
@@ -89,11 +92,12 @@ public class AssessmentServiceImpl implements AssessmentService {
         assessment.setTotalScore(totalScore);
         assessment.setPassScore(request.passScore());
         assessment.setMaxAttempts(request.maxAttempts());
+        assessment.setDifficultyLevel(request.difficultyLevel());
         assessment.setStatus(0); // 草稿
         assessment.setCreatedBy(SecurityUtils.currentUserId());
         assessmentMapper.insert(assessment);
 
-        insertDrawRules(assessment.getId(), request.drawRules());
+        insertDrawRules(assessment.getId(), drawRules);
 
         return new AssessmentCreateResponseVO(
                 assessment.getId(),
@@ -135,12 +139,14 @@ public class AssessmentServiceImpl implements AssessmentService {
             Long availableCount = questionMapper.countAvailableQuestions(
                     assessment.getCategoryId(),
                     rule.getQuestionType(),
+                    rule.getDifficulty(),
                     assessment.getCourseId()
             );
             long available = availableCount != null ? availableCount : 0L;
             boolean sufficient = available >= rule.getQuestionCount();
             return new AssessmentDetailVO.DrawRuleVO(
                     rule.getQuestionType(),
+                    rule.getDifficulty(),
                     rule.getQuestionCount(),
                     rule.getScorePerQuestion(),
                     available,
@@ -162,6 +168,7 @@ public class AssessmentServiceImpl implements AssessmentService {
                 assessment.getTotalScore(),
                 assessment.getPassScore(),
                 assessment.getMaxAttempts(),
+                assessment.getDifficultyLevel(),
                 assessment.getStatus(),
                 drawRuleVOs
         );
@@ -180,7 +187,9 @@ public class AssessmentServiceImpl implements AssessmentService {
             throw new BusinessException(ErrorCode.ASSESSMENT_STATUS_CONFLICT);
         }
 
-        validateDrawRules(request.drawRules());
+        validateDifficultyLevel(request.difficultyLevel());
+        List<AssessmentCreateRequest.DrawRuleItem> drawRules = expandDrawRules(request.drawRules(), request.difficultyLevel());
+        validateDrawRules(drawRules);
         validateTime(request.startAt(), request.endAt());
         validatePassScore(request.passScore());
 
@@ -189,7 +198,7 @@ public class AssessmentServiceImpl implements AssessmentService {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
 
-        BigDecimal totalScore = calculateTotalScore(request.drawRules());
+        BigDecimal totalScore = calculateTotalScore(drawRules);
 
         assessment.setCourseId(request.courseId());
         assessment.setCategoryId(course.getCategoryId());
@@ -201,6 +210,7 @@ public class AssessmentServiceImpl implements AssessmentService {
         assessment.setTotalScore(totalScore);
         assessment.setPassScore(request.passScore());
         assessment.setMaxAttempts(request.maxAttempts());
+        assessment.setDifficultyLevel(request.difficultyLevel());
         assessmentMapper.updateById(assessment);
 
         // 删除旧规则并重新插入
@@ -208,7 +218,7 @@ public class AssessmentServiceImpl implements AssessmentService {
                 Wrappers.<AssessmentDrawRule>lambdaQuery()
                         .eq(AssessmentDrawRule::getAssessmentId, assessmentId)
         );
-        insertDrawRules(assessmentId, request.drawRules());
+        insertDrawRules(assessmentId, drawRules);
     }
 
     // ==================== 12. 发布前检查题量 ====================
@@ -230,6 +240,7 @@ public class AssessmentServiceImpl implements AssessmentService {
             Long available = questionMapper.countAvailableQuestions(
                     assessment.getCategoryId(),
                     rule.getQuestionType(),
+                    rule.getDifficulty(),
                     assessment.getCourseId()
             );
             long availableCount = available != null ? available : 0L;
@@ -239,6 +250,7 @@ public class AssessmentServiceImpl implements AssessmentService {
             }
             return new QuestionCapacityVO.ItemVO(
                     rule.getQuestionType(),
+                    rule.getDifficulty(),
                     rule.getQuestionCount(),
                     availableCount,
                     sufficient
@@ -285,6 +297,7 @@ public class AssessmentServiceImpl implements AssessmentService {
             Long availableCount = questionMapper.countAvailableQuestions(
                     assessment.getCategoryId(),
                     rule.getQuestionType(),
+                    rule.getDifficulty(),
                     assessment.getCourseId()
             );
             long available = availableCount != null ? availableCount : 0L;
@@ -365,6 +378,42 @@ public class AssessmentServiceImpl implements AssessmentService {
 
     // ==================== 私有辅助方法 ====================
 
+    private void validateDifficultyLevel(Integer difficultyLevel) {
+        if (difficultyLevel == null || difficultyLevel < 1 || difficultyLevel > 3) {
+            throw new BusinessException(ErrorCode.ASSESSMENT_DRAW_RULE_INVALID,
+                    "考核难度只支持简单(1)、中等(2)和困难(3)");
+        }
+    }
+
+    /** 将题型题数按整体难度系数拆分成可执行的题型+难度规则。 */
+    private List<AssessmentCreateRequest.DrawRuleItem> expandDrawRules(
+            List<AssessmentCreateRequest.DrawRuleItem> rules, Integer difficultyLevel) {
+        if (rules == null || rules.isEmpty()
+                || rules.stream().anyMatch(rule -> rule.difficulty() != null)) {
+            return rules;
+        }
+
+        int[][] ratios = {
+                {60, 30, 10},
+                {30, 50, 20},
+                {10, 30, 60}
+        };
+        int[] ratio = ratios[difficultyLevel - 1];
+        List<AssessmentCreateRequest.DrawRuleItem> expanded = new ArrayList<>();
+        for (AssessmentCreateRequest.DrawRuleItem rule : rules) {
+            int total = rule.questionCount() == null ? 0 : rule.questionCount();
+            int easyCount = total * ratio[0] / 100;
+            int hardCount = total * ratio[2] / 100;
+            int mediumCount = total - easyCount - hardCount;
+            int[] counts = {easyCount, mediumCount, hardCount};
+            for (int difficulty = 1; difficulty <= 3; difficulty++) {
+                expanded.add(new AssessmentCreateRequest.DrawRuleItem(
+                        rule.questionType(), difficulty, counts[difficulty - 1], rule.scorePerQuestion()));
+            }
+        }
+        return expanded;
+    }
+
     /**
      * 校验抽题规则
      */
@@ -377,6 +426,9 @@ public class AssessmentServiceImpl implements AssessmentService {
         for (AssessmentCreateRequest.DrawRuleItem rule : rules) {
             if (rule.questionType() != 1 && rule.questionType() != 2) {
                 throw new BusinessException(ErrorCode.ASSESSMENT_DRAW_RULE_INVALID, "题型只支持单选题(1)和判断题(2)");
+            }
+            if (rule.difficulty() != null && (rule.difficulty() < 1 || rule.difficulty() > 3)) {
+                throw new BusinessException(ErrorCode.ASSESSMENT_DRAW_RULE_INVALID, "难度只支持简单(1)、中等(2)和困难(3)");
             }
             if (rule.questionCount() != null && rule.questionCount() > 0) {
                 hasPositiveCount = true;
@@ -448,6 +500,7 @@ public class AssessmentServiceImpl implements AssessmentService {
             AssessmentDrawRule rule = new AssessmentDrawRule();
             rule.setAssessmentId(assessmentId);
             rule.setQuestionType(ruleItem.questionType());
+            rule.setDifficulty(ruleItem.difficulty());
             rule.setQuestionCount(ruleItem.questionCount());
             rule.setScorePerQuestion(ruleItem.scorePerQuestion());
             drawRuleMapper.insert(rule);

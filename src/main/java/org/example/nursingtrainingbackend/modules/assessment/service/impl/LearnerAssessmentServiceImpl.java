@@ -616,6 +616,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
                     Wrappers.<AssessmentQuestion>lambdaQuery()
                             .eq(AssessmentQuestion::getCategoryId, assessment.getCategoryId())
                             .eq(AssessmentQuestion::getQuestionType, rule.getQuestionType())
+                            .eq(rule.getDifficulty() != null, AssessmentQuestion::getDifficulty, rule.getDifficulty())
                             .eq(AssessmentQuestion::getStatus, 1)
                             .isNull(AssessmentQuestion::getDeletedAt)
             );

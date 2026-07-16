@@ -19,10 +19,12 @@ public record AssessmentCreateRequest(
         @NotNull Integer durationMinutes,
         @NotNull BigDecimal passScore,
         @NotNull Integer maxAttempts,
+        @NotNull Integer difficultyLevel,
         @NotNull List<DrawRuleItem> drawRules
 ) {
     public record DrawRuleItem(
             @NotNull Integer questionType,
+            Integer difficulty,
             @NotNull Integer questionCount,
             @NotNull BigDecimal scorePerQuestion
     ) {

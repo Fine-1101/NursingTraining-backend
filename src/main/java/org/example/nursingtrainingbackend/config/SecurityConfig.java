@@ -45,7 +45,6 @@ public class SecurityConfig {
                                 "/api/auth/logout",
                                 "/api/admin/login",
                                 "/api/debug/**",
-                                "/api/ws/ticket",
                                 "/error",
                                 "/static/**",
                                 "/uploads/**"

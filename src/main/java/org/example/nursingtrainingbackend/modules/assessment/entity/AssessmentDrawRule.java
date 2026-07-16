@@ -24,6 +24,9 @@ public class AssessmentDrawRule {
     /** 题型：1-单选题 2-判断题 */
     private Integer questionType;
 
+    /** Difficulty: 1-easy, 2-medium, 3-hard; null keeps legacy rules unrestricted. */
+    private Integer difficulty;
+
     /** 随机抽题数量 */
     private Integer questionCount;
 

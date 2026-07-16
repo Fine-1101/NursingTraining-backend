@@ -22,7 +22,6 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -312,8 +311,7 @@ public class DashboardServiceImpl implements DashboardService {
                         (a, b) -> a
                 ));
 
-        int startedCount = countMap.getOrDefault(1, 0) + countMap.getOrDefault(2, 0);
-        int notStartedCount = totalLearners - startedCount;
+        int notStartedCount = countMap.getOrDefault(0, 0);
 
         List<DashboardVO.StatusItem> items = new ArrayList<>();
         items.add(buildStatusItem("NOT_STARTED", "未开始", notStartedCount, totalLearners));
@@ -348,18 +346,17 @@ public class DashboardServiceImpl implements DashboardService {
         List<TrendRow> rawData;
 
         if ("LAST_1_WEEKS".equals(range)) {
-            unit = "WEEK";
-            startDate = today.minusWeeks(1).with(DayOfWeek.MONDAY)
-                    .format(DateTimeFormatter.ISO_LOCAL_DATE);
-            rawData = dashboardMapper.selectWeeklyLearningTrend(startDate, endDate);
+            unit = "DAY";
+            startDate = today.minusDays(6).format(DateTimeFormatter.ISO_LOCAL_DATE);
+            rawData = dashboardMapper.selectDailyLearningTrend(startDate, endDate);
         } else if ("LAST_6_MONTHS".equals(range)) {
             unit = "MONTH";
-            startDate = today.minusMonths(6).withDayOfMonth(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
+            startDate = today.minusMonths(5).withDayOfMonth(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
             rawData = dashboardMapper.selectMonthlyLearningTrend(startDate, endDate);
         } else {
-            unit = "MONTH";
-            startDate = today.minusMonths(1).withDayOfMonth(1).format(DateTimeFormatter.ISO_LOCAL_DATE);
-            rawData = dashboardMapper.selectMonthlyLearningTrend(startDate, endDate);
+            unit = "WEEK";
+            startDate = today.minusDays(27).format(DateTimeFormatter.ISO_LOCAL_DATE);
+            rawData = dashboardMapper.selectWeeklyLearningTrend(startDate, endDate);
         }
 
         List<DashboardVO.TrendPoint> points = rawData.stream()

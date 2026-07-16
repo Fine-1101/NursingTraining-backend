@@ -83,8 +83,11 @@
         SELECT COUNT(*)
         FROM assessment_question q
         WHERE q.category_id IN (SELECT id FROM cat_ancestors)
-          AND q.question_type = #{questionType}
-          AND q.status = 1
+        AND q.question_type = #{questionType}
+        <if test="difficulty != null">
+            AND q.difficulty = #{difficulty}
+        </if>
+        AND q.status = 1
           AND q.deleted_at IS NULL
           AND (
               NOT EXISTS (SELECT 1 FROM assessment_question_course WHERE question_id = q.id)

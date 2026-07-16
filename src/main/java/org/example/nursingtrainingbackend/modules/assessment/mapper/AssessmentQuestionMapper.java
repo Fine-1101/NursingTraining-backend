@@ -23,5 +23,6 @@ public interface AssessmentQuestionMapper extends BaseMapper<AssessmentQuestion>
     /** 统计某类别+题型下可用于指定课程的题目数 */
     Long countAvailableQuestions(@Param("categoryId") Long categoryId,
                                   @Param("questionType") Integer questionType,
+                                  @Param("difficulty") Integer difficulty,
                                   @Param("courseId") Long courseId);
 }

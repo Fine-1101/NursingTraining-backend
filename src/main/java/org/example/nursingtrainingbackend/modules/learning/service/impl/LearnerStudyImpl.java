@@ -11,6 +11,8 @@ import org.example.nursingtrainingbackend.modules.courseware.article.entity.Arti
 import org.example.nursingtrainingbackend.modules.courseware.article.mapper.ArticleMapper;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.mapper.PptMapper;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.service.PptService;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptPreviewFile;
 import org.example.nursingtrainingbackend.modules.courseware.video.entity.Video;
 import org.example.nursingtrainingbackend.modules.courseware.video.mapper.VideoMapper;
 import org.example.nursingtrainingbackend.modules.learning.dto.VideoProgressRequest;
@@ -64,6 +66,7 @@ public class LearnerStudyImpl implements LearnerStudy {
     private final ArticleMapper articleMapper;
     private final VideoMapper videoMapper;
     private final PptMapper pptMapper;
+    private final PptService pptService;
     private final UserCourseProgressMapper userCourseProgressMapper;
     private final UserCoursePointProgressMapper userCoursePointProgressMapper;
     private final UserCourseResourceProgressMapper userCourseResourceProgressMapper;
@@ -170,6 +173,26 @@ public class LearnerStudyImpl implements LearnerStudy {
 
         recalculatePointProgress(userId, courseId, coursePointId, now);
         recalculateCourseProgress(userId, courseId, now);
+    }
+
+    @Override
+    public PptPreviewFile getPptPreview(Long coursePointId, Long pptId) {
+        Long userId = SecurityUtils.currentUserId();
+        User user = validateLearner(userId);
+        CoursePoint point = coursePointMapper.selectById(coursePointId);
+        if (point == null || !Integer.valueOf(1).equals(point.getStatus()) || point.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.LEARNER_POINT_NOT_FOUND);
+        }
+        validateCourseVisible(point.getCourseId(), user.getDeptId());
+
+        Long relationCount = coursePointPptMapper.selectCount(
+                new LambdaQueryWrapper<CoursePointPpt>()
+                        .eq(CoursePointPpt::getCoursePointId, coursePointId)
+                        .eq(CoursePointPpt::getPptId, pptId));
+        if (relationCount == null || relationCount == 0) {
+            throw new BusinessException(ErrorCode.LEARNER_POINT_NOT_FOUND);
+        }
+        return pptService.getPreviewFile(pptId);
     }
 
     @Override
@@ -670,7 +693,9 @@ public class LearnerStudyImpl implements LearnerStudy {
             progress.setUpdatedAt(now);
             userCourseProgressMapper.insert(progress);
         } else {
-            progress.setStatus(1);
+            if (!Integer.valueOf(2).equals(progress.getStatus())) {
+                progress.setStatus(1);
+            }
             progress.setLastPointId(pointId);
             progress.setUpdatedAt(now);
             userCourseProgressMapper.updateById(progress);
@@ -872,7 +897,7 @@ public class LearnerStudyImpl implements LearnerStudy {
             vo.setTitle(ppt.getTitle());
             vo.setDescription(ppt.getDescription());
             vo.setCoverUrl(ppt.getCoverUrl());
-            vo.setPreviewUrl(ppt.getFileUrl());
+            vo.setPreviewUrl(resolvePptPreviewUrl(pointId, ppt));
             vo.setPageCount(ppt.getPageCount());
             vo.setAllowDownload(ppt.getAllowDownload() != null && ppt.getAllowDownload() == 1);
 
@@ -916,6 +941,10 @@ public class LearnerStudyImpl implements LearnerStudy {
             map.put(key, rp);
         }
         return map;
+    }
+
+    private String resolvePptPreviewUrl(Long pointId, Ppt ppt) {
+        return "/api/learner/courses/points/" + pointId + "/ppts/" + ppt.getId() + "/preview";
     }
 
     /**

@@ -46,7 +46,7 @@ public class CacheEvictionListener {
             case TAG_OVERVIEW -> evict("nursing:tag:overview");
             case TAG_STATISTICS -> evict("nursing:tag:statistics");
             case LEARNER_HOME -> evictPattern("nursing:learner:home:v1:*");
-            case DEPARTMENT_VISIBLE_COURSES -> evictPattern("nursing:department:visible_courses:v1:*");
+            case DEPARTMENT_VISIBLE_COURSES -> evictPattern("nursing:department:visible_courses:v2:*");
             case LEARNER_RECORD_STATS -> evictPattern("nursing:learner:stats:*");
             case LEARNER_RANKINGS -> {
                 evictPattern("nursing:rank:course:*");
@@ -62,7 +62,7 @@ public class CacheEvictionListener {
                 evict("nursing:category:overview:v1");
                 evictPattern("nursing:admin:settings:student_department_distribution:v1:*");
                 evictPattern("nursing:learner:home:v1:*");
-                evictPattern("nursing:department:visible_courses:v1:*");
+                evictPattern("nursing:department:visible_courses:v2:*");
                 evictPattern("nursing:admin:settings:student_department_distribution:v1:*");
                 evictPattern("nursing:learner:stats:*");
                 evictPattern("nursing:rank:course:*");

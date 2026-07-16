@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS assessment (
     total_score DECIMAL(6,2) NOT NULL COMMENT '总分',
     pass_score DECIMAL(6,2) NOT NULL COMMENT '及格分',
     max_attempts INT NOT NULL DEFAULT 1 COMMENT '最多考试次数',
+    difficulty_level TINYINT NOT NULL DEFAULT 2 COMMENT '考核难度：1-简单 2-中等 3-困难',
     status TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0-草稿 1-已发布 2-已关闭',
     published_at DATETIME DEFAULT NULL,
     created_by BIGINT NOT NULL,
@@ -67,10 +68,11 @@ CREATE TABLE IF NOT EXISTS assessment_draw_rule (
     id BIGINT NOT NULL AUTO_INCREMENT,
     assessment_id BIGINT NOT NULL COMMENT '考核ID',
     question_type TINYINT NOT NULL COMMENT '题型：1-单选题 2-判断题',
+    difficulty TINYINT DEFAULT NULL COMMENT '难度：1-简单 2-中等 3-困难；NULL兼容旧规则（不限难度）',
     question_count INT NOT NULL COMMENT '随机抽题数量',
     score_per_question DECIMAL(6,2) NOT NULL COMMENT '每题分值',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_assessment_question_type (assessment_id, question_type)
+    UNIQUE KEY uk_assessment_question_type_difficulty (assessment_id, question_type, difficulty)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='随机组卷规则';
 
 CREATE TABLE IF NOT EXISTS assessment_attempt (

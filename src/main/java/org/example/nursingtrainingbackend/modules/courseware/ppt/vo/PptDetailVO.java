@@ -11,6 +11,8 @@ public class PptDetailVO {
     private String title;
     private String description;
     private String originalName;
+    private String fileUrl;
+    private Integer pageCount;
     private Long fileSize;
     private Long courseCount;
     private Boolean allowDownload;

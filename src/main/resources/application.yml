@@ -9,7 +9,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/nursing_test?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:127315jj}
+    password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:
@@ -52,6 +52,12 @@ app:
   upload:
     max-size: ${APP_UPLOAD_MAX_BYTES:314572800}
     allowed-content-types: ${APP_UPLOAD_TYPES:image/jpeg,image/png,image/gif,application/pdf,video/mp4,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint}
+
+  ppt-conversion:
+    enabled: ${PPT_CONVERSION_ENABLED:true}
+    libre-office-path: ${LIBREOFFICE_PATH:soffice}
+    timeout: ${PPT_CONVERSION_TIMEOUT:2m}
+    preview-directory: ${PPT_PREVIEW_DIRECTORY:nursing-training/ppts/previews}
 
   learning-report:
     enabled: ${AI_REPORT_ENABLED:true}

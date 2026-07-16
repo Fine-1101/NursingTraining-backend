@@ -119,6 +119,8 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
             courseDepartment.setCreatedAt(LocalDateTime.now());
             courseDepartmentMapper.insert(courseDepartment);
         }
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.DEPARTMENT_VISIBLE_COURSES));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.LEARNER_HOME));
 
         // 构造响应
         CourseUpdateBasicVO vo = new CourseUpdateBasicVO();
@@ -192,6 +194,8 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
 
         // 课程状态变更，清除课程结构缓存
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.DEPARTMENT_VISIBLE_COURSES));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.LEARNER_HOME));
 
         // 5. 构造响应
         CourseStatusVO vo = new CourseStatusVO();

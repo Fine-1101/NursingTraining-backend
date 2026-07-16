@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 public class LearnerHomeServiceImpl implements LearnerHomeService {
 
     private static final String LEARNER_HOME_CACHE_PREFIX = "nursing:learner:home:v1:";
-    private static final String DEPARTMENT_VISIBLE_COURSES_CACHE_PREFIX = "nursing:department:visible_courses:v1:";
+    private static final String DEPARTMENT_VISIBLE_COURSES_CACHE_PREFIX = "nursing:department:visible_courses:v2:";
     private static final long LEARNER_HOME_CACHE_TTL_SECONDS = 60; // 1分钟，进度实时性要求高
     private static final long DEPARTMENT_VISIBLE_COURSES_CACHE_TTL_MINUTES = 5; // 5分钟，公共数据
 
@@ -106,7 +106,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         homePageVO.setRecommendedCourses(getRecommendedCoursesForHome(visibleCourseIds, userId, 4));
 
         // 3.3 继续学习（最多4条）
-        homePageVO.setContinueCourses(getContinueCoursesForHome(userId, 4));
+        homePageVO.setContinueCourses(getContinueCoursesForHome(userId, user.getDeptId(), visibleCourseIds, 4));
 
         // 3.4 进度概览
         homePageVO.setProgressOverview(buildProgressOverview(visibleCourseIds, userId));
@@ -154,19 +154,25 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
     @Override
     public PageResult<ContinueCourseVO> getContinueCourses(LearnerPageQuery query) {
         Long userId = SecurityUtils.currentUserId();
-        validateLearner(userId);
+        User user = validateLearner(userId);
+        List<Long> visibleCourseIds = getVisibleCourseIds(user.getDeptId());
+        if (visibleCourseIds.isEmpty()) {
+            return new PageResult<>(Collections.emptyList(), 0L,
+                    query.getPage().longValue(), query.getSize().longValue(), 0L);
+        }
         
         // 查询学习中状态的课程进度
         LambdaQueryWrapper<UserCourseProgress> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserCourseProgress::getUserId, userId)
                .eq(UserCourseProgress::getStatus, 1) // LEARNING
+               .in(UserCourseProgress::getCourseId, visibleCourseIds)
                .orderByDesc(UserCourseProgress::getUpdatedAt);
         
         Page<UserCourseProgress> page = new Page<>(query.getPage(), query.getSize());
         Page<UserCourseProgress> progressPage = userCourseProgressMapper.selectPage(page, wrapper);
         
         List<ContinueCourseVO> courses = progressPage.getRecords().stream()
-                .map(progress -> buildContinueCourseVO(progress))
+                .map(progress -> buildContinueCourseVO(progress, user.getDeptId()))
                 .filter(Objects::nonNull) // 过滤掉不可见的课程
                 .collect(Collectors.toList());
         
@@ -485,17 +491,19 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
     /**
      * 获取首页继续学习课程（限制数量）
      */
-    private List<ContinueCourseVO> getContinueCoursesForHome(Long userId, int limit) {
+    private List<ContinueCourseVO> getContinueCoursesForHome(Long userId, Long deptId,
+                                                              List<Long> visibleCourseIds, int limit) {
         LambdaQueryWrapper<UserCourseProgress> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserCourseProgress::getUserId, userId)
                .eq(UserCourseProgress::getStatus, 1) // LEARNING
+               .in(UserCourseProgress::getCourseId, visibleCourseIds)
                .orderByDesc(UserCourseProgress::getUpdatedAt)
                .last("LIMIT " + limit);
         
         List<UserCourseProgress> progresses = userCourseProgressMapper.selectList(wrapper);
         
         return progresses.stream()
-                .map(this::buildContinueCourseVO)
+                .map(progress -> buildContinueCourseVO(progress, deptId))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
@@ -503,7 +511,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
     /**
      * 构建继续学习课程VO
      */
-    private ContinueCourseVO buildContinueCourseVO(UserCourseProgress progress) {
+    private ContinueCourseVO buildContinueCourseVO(UserCourseProgress progress, Long deptId) {
         Course course = courseMapper.selectById(progress.getCourseId());
         if (course == null || course.getStatus() != 1 || course.getDeletedAt() != null) {
             return null; // 课程不可见
@@ -524,7 +532,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         // 获取课程类型
         LambdaQueryWrapper<CourseDepartment> cdWrapper = new LambdaQueryWrapper<>();
         cdWrapper.eq(CourseDepartment::getCourseId, progress.getCourseId())
-                 .last("LIMIT 1");
+                 .eq(CourseDepartment::getDepartmentId, deptId);
         CourseDepartment cd = courseDepartmentMapper.selectOne(cdWrapper);
         vo.setCourseType(cd != null && cd.getRequired() == 1 ? "REQUIRED" : "OPTIONAL");
         

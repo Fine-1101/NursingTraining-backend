@@ -7,6 +7,7 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptDetailVO;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptListItem;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptOverviewVO;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptPreviewFile;
 
 public interface PptService {
 
@@ -22,6 +23,10 @@ public interface PptService {
     Ppt updateStatus(Long id, String status);
 
     String getDownloadUrl(Long id, Integer expiresIn);
+
+    PptPreviewFile getPreviewFile(Long id);
+
+    void requestConversion(Long id);
 
     void deletePpt(Long id);
 

@@ -15,16 +15,35 @@
 
     <!--
         按状态统计学员学习进度分布
-        统计所有学员（role_type=1）在 user_course_progress 中的状态分布
-        没有进度记录的学员算作 NOT_STARTED
+        按学员所在科室已发布课程统计整体学习状态：
+        全部课程完成算 COMPLETED，一门都未开始算 NOT_STARTED，其余算 LEARNING
     -->
     <select id="countProgressByStatus" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.StatusCountRow">
         SELECT
-            ucp.status AS status,
-            COUNT(DISTINCT ucp.user_id) AS cnt
-        FROM user_course_progress ucp
-        INNER JOIN user u ON u.id = ucp.user_id AND u.role_type = 1 AND u.deleted_at IS NULL
-        GROUP BY ucp.status
+            learner_status.status AS status,
+            COUNT(*) AS cnt
+        FROM (
+            SELECT
+                u.id AS user_id,
+                CASE
+                    WHEN COUNT(DISTINCT c.id) &gt; 0
+                         AND COUNT(DISTINCT CASE WHEN ucp.status = 2 THEN c.id END)
+                             = COUNT(DISTINCT c.id) THEN 2
+                    WHEN COUNT(DISTINCT CASE WHEN ucp.status IN (1, 2) THEN c.id END) = 0 THEN 0
+                    ELSE 1
+                END AS status
+            FROM user u
+            LEFT JOIN course_department cd ON cd.department_id = u.dept_id
+            LEFT JOIN course c ON c.id = cd.course_id
+                              AND c.status = 1
+                              AND c.deleted_at IS NULL
+            LEFT JOIN user_course_progress ucp ON ucp.user_id = u.id
+                                               AND ucp.course_id = c.id
+            WHERE u.role_type = 1
+              AND u.deleted_at IS NULL
+            GROUP BY u.id
+        ) learner_status
+        GROUP BY learner_status.status
     </select>
 
     <!-- 按月份统计学习趋势 -->
@@ -55,6 +74,35 @@
             WHERE DATE_ADD(#{startDate}, INTERVAL seq MONTH) &lt;= #{endDate}
         ) periods
         ORDER BY periods.month_start
+    </select>
+
+    <!-- 按天统计学习趋势；日期序列保证没有数据的日期也返回 0 -->
+    <select id="selectDailyLearningTrend" resultType="org.example.nursingtrainingbackend.modules.dashboard.dto.TrendRow">
+        SELECT
+            DATE_FORMAT(periods.day_start, '%Y-%m-%d') AS period,
+            DATE_FORMAT(periods.day_start, '%m-%d') AS label,
+            (SELECT COUNT(DISTINCT ucp.user_id)
+             FROM user_course_progress ucp
+             WHERE ucp.updated_at &gt;= periods.day_start
+               AND ucp.updated_at &lt; periods.day_end
+            ) AS learnerCount,
+            (SELECT COUNT(*)
+             FROM user_course_progress ucp
+             WHERE ucp.status = 2
+               AND ucp.completed_at &gt;= periods.day_start
+               AND ucp.completed_at &lt; periods.day_end
+            ) AS completedCourseCount
+        FROM (
+            SELECT
+                DATE_ADD(#{startDate}, INTERVAL seq DAY) AS day_start,
+                DATE_ADD(#{startDate}, INTERVAL (seq + 1) DAY) AS day_end
+            FROM (
+                SELECT 0 AS seq UNION SELECT 1 UNION SELECT 2 UNION SELECT 3
+                UNION SELECT 4 UNION SELECT 5 UNION SELECT 6
+            ) seq_tbl
+            WHERE DATE_ADD(#{startDate}, INTERVAL seq DAY) &lt; #{endDate}
+        ) periods
+        ORDER BY periods.day_start
     </select>
 
     <!-- 按周统计学习趋势 -->

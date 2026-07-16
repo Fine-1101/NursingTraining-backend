@@ -8,6 +8,7 @@ import org.example.nursingtrainingbackend.common.page.PageResult;
 import org.example.nursingtrainingbackend.common.result.ErrorCode;
 import org.example.nursingtrainingbackend.modules.learning.entity.UserCourseProgress;
 import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseProgressMapper;
+import org.example.nursingtrainingbackend.modules.dashboard.service.DashboardService;
 import org.example.nursingtrainingbackend.modules.system.dto.StudentQueryDTO;
 import org.example.nursingtrainingbackend.modules.system.dto.StudentUpdateDTO;
 //import org.example.nursingtrainingbackend.modules.system.entity.UserCourseProgress;
@@ -21,6 +22,8 @@ import org.example.nursingtrainingbackend.security.SecurityUtils;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
@@ -44,6 +47,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
     private final StringRedisTemplate redisTemplate;
 
     private final ObjectMapper objectMapper;
+    private final DashboardService dashboardService;
     @Override
     public CurrentUserVO getCurrentUser() {
         Long currentUserId = SecurityUtils.currentUserId();
@@ -213,13 +217,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         List<CourseProgressItemVO> items = settingsStudentMapper.selectStudentCourseProgress(
                 studentId, student.getDeptId());
 
-        BigDecimal totalProgress = BigDecimal.ZERO;
-        for (CourseProgressItemVO item : items) {
-            totalProgress = totalProgress.add(item.getProgressPercent());
-        }
-        BigDecimal avgProgress = items.isEmpty()
-                ? BigDecimal.ZERO
-                : totalProgress.divide(BigDecimal.valueOf(items.size()), 2, RoundingMode.HALF_UP);
+        BigDecimal avgProgress = calculateAverageProgress(items);
 
         CourseProgressVO vo = new CourseProgressVO();
         vo.setStudentId(studentId);
@@ -268,6 +266,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         vo.setProgressPercent(new BigDecimal("100.00"));
         vo.setCompletedAt(now);
         vo.setUpdatedAt(now);
+        evictDashboardCacheAfterCommit();
         return vo;
     }
 
@@ -310,6 +309,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         vo.setLastPointId(null);
         vo.setCompletedAt(null);
         vo.setUpdatedAt(now);
+        evictDashboardCacheAfterCommit();
         return vo;
     }
 
@@ -357,11 +357,34 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
                 : new ArrayList<>();
         vo.setCourseCount(items.size());
 
-        // 平均学习进度：直接从 user_course_progress 表计算该学员所有课程的 progress_percent 平均值
-        BigDecimal avgProgress = settingsStudentMapper.selectAvgProgressByUserId(student.getId());
-        vo.setAverageProgressPercent(avgProgress != null ? avgProgress : BigDecimal.ZERO);
+        vo.setAverageProgressPercent(calculateAverageProgress(items));
 
         return vo;
+    }
+
+    private BigDecimal calculateAverageProgress(List<CourseProgressItemVO> items) {
+        if (items.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal totalProgress = items.stream()
+                .map(CourseProgressItemVO::getProgressPercent)
+                .map(progress -> progress != null ? progress : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return totalProgress.divide(BigDecimal.valueOf(items.size()), 2, RoundingMode.HALF_UP);
+    }
+
+    private void evictDashboardCacheAfterCommit() {
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    dashboardService.evictDashboardCache();
+                }
+            });
+            return;
+        }
+        dashboardService.evictDashboardCache();
     }
 
     private void validateCourseForStudent(Long courseId, Long deptId) {

@@ -98,6 +98,7 @@ public enum ErrorCode {
     PPT_NOT_FOUND(4201, "PPT 不存在", HttpStatus.NOT_FOUND),
     PPT_STATUS_INVALID(4202, "当前状态不允许该操作", HttpStatus.BAD_REQUEST),
     PPT_HAS_COURSE(4203, "PPT 已关联课程，不能删除", HttpStatus.CONFLICT),
+    PPT_PREVIEW_NOT_READY(4204, "PPT 预览文件尚未生成", HttpStatus.CONFLICT),
     OSS_INVALID_URL(4204, "OSS 文件地址不合法", HttpStatus.BAD_REQUEST),
     OSS_FILE_NOT_FOUND(4205, "原始文件不存在", HttpStatus.NOT_FOUND),
 

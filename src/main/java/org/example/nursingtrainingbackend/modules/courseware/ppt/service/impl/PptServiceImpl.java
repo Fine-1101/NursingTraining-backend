@@ -2,6 +2,7 @@ package org.example.nursingtrainingbackend.modules.courseware.ppt.service.impl;
 
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.model.GeneratePresignedUrlRequest;
+import com.aliyun.oss.model.OSSObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -16,16 +17,22 @@ import org.example.nursingtrainingbackend.modules.courseware.ppt.dto.UpdatePptRe
 import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.mapper.PptMapper;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.service.PptService;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.service.PptConversionService;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptDetailVO;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptListItem;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptOverviewVO;
+import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptPreviewFile;
 import org.example.nursingtrainingbackend.modules.file.service.FileService;
 import org.example.nursingtrainingbackend.modules.user.entity.User;
 import org.example.nursingtrainingbackend.modules.user.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.net.URI;
 import java.net.URL;
@@ -34,6 +41,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Slf4j
@@ -52,6 +60,9 @@ public class PptServiceImpl implements PptService {
     @Autowired
     private FileService fileService;
 
+    @Autowired
+    private PptConversionService pptConversionService;
+
     @Autowired(required = false)
     private OSS ossClient;
 
@@ -64,6 +75,21 @@ public class PptServiceImpl implements PptService {
             "PUBLISHED->DRAFT", "PUBLISHED->OFFLINE",
             "OFFLINE->PUBLISHED"
     ));
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void recoverMissingPreviews() {
+        List<Ppt> missingPreviews = pptMapper.selectList(Wrappers.<Ppt>lambdaQuery()
+                .isNull(Ppt::getFileUrl)
+                .isNotNull(Ppt::getOriginalUrl)
+                .orderByAsc(Ppt::getId)
+                .last("LIMIT 50"));
+        if (missingPreviews.isEmpty()) {
+            return;
+        }
+        log.info("Queueing missing PPT previews after startup, count={}", missingPreviews.size());
+        missingPreviews.forEach(ppt -> pptConversionService.convertAsync(
+                ppt.getId(), ppt.getOriginalUrl(), ppt.getOriginalName()));
+    }
 
     @Override
     @Transactional
@@ -92,6 +118,20 @@ public class PptServiceImpl implements PptService {
         // 标记PPT文件已使用
         String pptKey = extractKeyFromUrl(ppt.getOriginalUrl());
         fileService.markFileUsed(pptKey, "PPT_FILE", ppt.getId());
+
+        Long pptId = ppt.getId();
+        String originalUrl = ppt.getOriginalUrl();
+        String originalName = ppt.getOriginalName();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    pptConversionService.convertAsync(pptId, originalUrl, originalName);
+                }
+            });
+        } else {
+            pptConversionService.convertAsync(pptId, originalUrl, originalName);
+        }
 
         return ppt;
     }
@@ -200,6 +240,28 @@ public class PptServiceImpl implements PptService {
     }
 
     @Override
+    public PptPreviewFile getPreviewFile(Long id) {
+        if (ossClient == null || ossProperties == null || !ossProperties.configured()) {
+            throw new BusinessException(ErrorCode.OSS_NOT_CONFIGURED);
+        }
+        Ppt ppt = getPptById(id);
+        String previewUrl = ppt.getFileUrl();
+        if (previewUrl == null || !URI.create(previewUrl).getPath().toLowerCase().endsWith(".pdf")) {
+            throw new BusinessException(ErrorCode.PPT_PREVIEW_NOT_READY);
+        }
+
+        OSSObject object = ossClient.getObject(ossProperties.getBucketName(), extractKeyFromUrl(previewUrl));
+        long contentLength = object.getObjectMetadata().getContentLength();
+        return new PptPreviewFile(object.getObjectContent(), contentLength);
+    }
+
+    @Override
+    public void requestConversion(Long id) {
+        Ppt ppt = getPptById(id);
+        pptConversionService.convertAsync(ppt.getId(), ppt.getOriginalUrl(), ppt.getOriginalName());
+    }
+
+    @Override
     @Transactional
     public void deletePpt(Long id) {
         Ppt ppt = getPptById(id);
@@ -300,6 +362,8 @@ public class PptServiceImpl implements PptService {
                 .title(ppt.getTitle())
                 .description(ppt.getDescription())
                 .originalName(ppt.getOriginalName())
+                .fileUrl(ppt.getFileUrl())
+                .pageCount(ppt.getPageCount())
                 .fileSize(ppt.getFileSize())
                // .courseCount(courseCount)
                 .allowDownload(ppt.getAllowDownload() == 1)

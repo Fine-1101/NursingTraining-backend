@@ -50,6 +50,9 @@ public class Assessment {
     /** 最多考试次数 */
     private Integer maxAttempts;
 
+    /** Overall difficulty level: 1-easy, 2-medium, 3-hard. */
+    private Integer difficultyLevel;
+
     /** 状态：0-草稿 1-已发布 2-已关闭 */
     private Integer status;
 

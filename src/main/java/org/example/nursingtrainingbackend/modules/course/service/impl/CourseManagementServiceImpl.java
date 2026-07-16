@@ -389,6 +389,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
     // ==================== 修改课程状态 ====================
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public CourseStatusVO updateCourseStatus(Long courseId, CourseStatusDTO dto) {
         // 1. 校验课程存在
         Course course = courseMapper.selectById(courseId);
@@ -434,6 +435,8 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
         // 课程状态变更，清除课程结构缓存
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.DEPARTMENT_VISIBLE_COURSES));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.LEARNER_HOME));
 
         // 7. 构造响应
         CourseStatusVO vo = new CourseStatusVO();
@@ -501,6 +504,8 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
         // 课程删除，清除课程结构缓存
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.DEPARTMENT_VISIBLE_COURSES));
+        eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.LEARNER_HOME));
     }
 
     /**
