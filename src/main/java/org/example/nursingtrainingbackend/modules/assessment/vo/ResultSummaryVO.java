@@ -17,4 +17,9 @@ public class ResultSummaryVO {
     private BigDecimal averageScore;
     private BigDecimal highestScore;
     private BigDecimal lowestScore;
+
+    /** 应参加但没有任何考试记录的人数 */
+    private Long notParticipatedCount;
+    /** 当前存在答题中记录的人数 */
+    private Long inProgressCount;
 }

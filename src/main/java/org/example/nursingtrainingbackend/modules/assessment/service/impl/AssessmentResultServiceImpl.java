@@ -203,6 +203,15 @@ public class AssessmentResultServiceImpl implements AssessmentResultService {
             summary.setPassRate(BigDecimal.ZERO);
         }
 
+        // 计算 notParticipatedCount 和 inProgressCount
+        Long participatedCount = attemptMapper.countDistinctParticipatedLearners(assessmentId);
+        long participated = participatedCount != null ? participatedCount : 0L;
+        long eligible = eligibleCount != null ? eligibleCount : 0L;
+        summary.setNotParticipatedCount(Math.max(eligible - participated, 0));
+
+        Long inProgressCount = attemptMapper.countInProgressLearners(assessmentId);
+        summary.setInProgressCount(inProgressCount != null ? inProgressCount : 0L);
+
         return summary;
     }
 

@@ -23,6 +23,15 @@ public class CourseStudentMessage {
 
     private String courseTitle;
 
+    /** 考核ID（考核提醒时使用） */
+    private Long assessmentId;
+
+    /** 批量发送批次号 */
+    private String batchId;
+
+    /** 消息类型：GENERAL / ASSESSMENT_REMINDER */
+    private String messageType;
+
     private String content;
 
     private LocalDateTime readAt;

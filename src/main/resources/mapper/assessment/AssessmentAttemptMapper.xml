@@ -154,7 +154,7 @@
             resultType="org.example.nursingtrainingbackend.modules.assessment.vo.ResultSummaryVO">
         SELECT
             #{assessmentId} AS assessmentId,
-            COUNT(*) AS participantCount,
+            COUNT(DISTINCT aa.user_id) AS participantCount,
             SUM(CASE WHEN aa.status = 2 THEN 1 ELSE 0 END) AS submittedCount,
             SUM(CASE WHEN aa.passed = 1 AND aa.status = 2 THEN 1 ELSE 0 END) AS passedCount,
             SUM(CASE WHEN aa.passed = 0 AND aa.status = 2 THEN 1 ELSE 0 END) AS failedCount,
@@ -244,6 +244,227 @@
             AND aa.submitted_at &lt;= #{submittedTo}
         </if>
         ORDER BY aa.submitted_at DESC, aa.id DESC
+    </select>
+
+    <!-- ========== 考核参与情况查询 ========== -->
+
+    <!-- 查询考核参与人员分页（共用“应参加人员”规则） -->
+    <select id="selectParticipants"
+            resultType="org.example.nursingtrainingbackend.modules.assessment.vo.ParticipantItemVO">
+        SELECT
+            u.id AS userId,
+            u.username,
+            u.real_name AS realName,
+            u.dept_id AS departmentId,
+            d.name AS departmentName,
+            COALESCE(attempt_agg.attempt_count, 0) AS attemptCount,
+            attempt_agg.best_score AS bestScore,
+            attempt_agg.latest_score AS latestScore,
+            CASE WHEN attempt_agg.latest_passed = 1 THEN TRUE
+                 WHEN attempt_agg.latest_passed = 0 THEN FALSE
+                 ELSE NULL END AS passed,
+            attempt_agg.latest_attempt_id AS latestAttemptId,
+            attempt_agg2.started_at AS startedAt,
+            attempt_agg2.submitted_at AS submittedAt,
+            CASE
+                WHEN COALESCE(attempt_agg.attempt_count, 0) = 0 THEN 'NOT_PARTICIPATED'
+                WHEN attempt_agg.has_in_progress = 1 AND attempt_agg.has_submitted = 0 THEN 'IN_PROGRESS'
+                WHEN attempt_agg.has_submitted = 1 THEN 'SUBMITTED'
+                ELSE 'IN_PROGRESS'
+            END AS participationStatus,
+            CASE WHEN reminder_agg.reminded_count > 0 THEN TRUE ELSE FALSE END AS reminded,
+            reminder_agg.last_reminded_at AS lastRemindedAt
+        FROM user u
+        LEFT JOIN department d ON d.id = u.dept_id
+        LEFT JOIN (
+            SELECT
+                aa.user_id,
+                COUNT(*) AS attempt_count,
+                MAX(aa.score) AS best_score,
+                MAX(CASE WHEN aa.status IN (2,3) THEN aa.id END) AS latest_completed_id,
+                MAX(aa.id) AS latest_attempt_id,
+                MAX(CASE WHEN aa.status IN (2,3) THEN aa.score END) AS latest_score,
+                MAX(CASE WHEN aa.status IN (2,3) THEN aa.passed END) AS latest_passed,
+                MAX(CASE WHEN aa.status = 1 THEN 1 ELSE 0 END) AS has_in_progress,
+                MAX(CASE WHEN aa.status IN (2,3) THEN 1 ELSE 0 END) AS has_submitted
+            FROM assessment_attempt aa
+            WHERE aa.assessment_id = #{assessmentId}
+            GROUP BY aa.user_id
+        ) attempt_agg ON attempt_agg.user_id = u.id
+        LEFT JOIN (
+            SELECT aa2.user_id,
+                   MAX(aa2.started_at) AS started_at,
+                   MAX(aa2.submitted_at) AS submitted_at
+            FROM assessment_attempt aa2
+            WHERE aa2.assessment_id = #{assessmentId}
+              AND aa2.id = (
+                  SELECT MAX(aa3.id) FROM assessment_attempt aa3
+                  WHERE aa3.assessment_id = #{assessmentId} AND aa3.user_id = aa2.user_id
+              )
+            GROUP BY aa2.user_id
+        ) attempt_agg2 ON attempt_agg2.user_id = u.id
+        LEFT JOIN (
+            SELECT
+                msg.receiver_id,
+                COUNT(*) AS reminded_count,
+                MAX(msg.created_at) AS last_reminded_at
+            FROM course_student_message msg
+            WHERE msg.assessment_id = #{assessmentId}
+              AND msg.message_type = 'ASSESSMENT_REMINDER'
+              AND msg.deleted_at IS NULL
+            GROUP BY msg.receiver_id
+        ) reminder_agg ON reminder_agg.receiver_id = u.id
+        WHERE u.role_type = 1
+          AND u.status = 1
+          AND u.deleted_at IS NULL
+          AND (
+              NOT EXISTS (
+                  SELECT 1 FROM assessment_question_course aqc
+                  JOIN assessment_question aq ON aq.id = aqc.question_id
+                  JOIN assessment a2 ON a2.category_id = #{categoryId}
+                  WHERE a2.course_id = #{courseId}
+                    AND aq.category_id = #{categoryId}
+                    AND aq.status = 1
+                    AND aq.deleted_at IS NULL
+              )
+              OR u.dept_id IN (
+                  SELECT cd.department_id FROM course_department cd WHERE cd.course_id = #{courseId}
+              )
+          )
+        <if test="participationStatus != null and participationStatus == 'NOT_PARTICIPATED'">
+            AND attempt_agg.attempt_count IS NULL
+        </if>
+        <if test="participationStatus != null and participationStatus == 'IN_PROGRESS'">
+            AND attempt_agg.attempt_count IS NOT NULL
+            AND attempt_agg.has_in_progress = 1
+            AND attempt_agg.has_submitted = 0
+        </if>
+        <if test="participationStatus != null and participationStatus == 'SUBMITTED'">
+            AND attempt_agg.has_submitted = 1
+        </if>
+        <if test="participationStatus != null and participationStatus == 'PARTICIPATED'">
+            AND attempt_agg.attempt_count IS NOT NULL
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (u.real_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.username LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="departmentId != null">
+            AND u.dept_id = #{departmentId}
+        </if>
+        ORDER BY u.id ASC
+    </select>
+
+    <!-- 统计某考核的答题中学员去重数 -->
+    <select id="countInProgressLearners" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT aa.user_id)
+        FROM assessment_attempt aa
+        WHERE aa.assessment_id = #{assessmentId}
+          AND aa.status = 1
+    </select>
+
+    <!-- 统计某考核的已参与学员去重数 -->
+    <select id="countDistinctParticipatedLearners" resultType="java.lang.Long">
+        SELECT COUNT(DISTINCT aa.user_id)
+        FROM assessment_attempt aa
+        WHERE aa.assessment_id = #{assessmentId}
+    </select>
+
+    <!-- 查询某考核下未参加学员ID列表 -->
+    <select id="selectNonParticipantUserIds" resultType="java.lang.Long">
+        SELECT u.id
+        FROM user u
+        WHERE u.role_type = 1
+          AND u.status = 1
+          AND u.deleted_at IS NULL
+          AND (
+              NOT EXISTS (
+                  SELECT 1 FROM assessment_question_course aqc
+                  JOIN assessment_question aq ON aq.id = aqc.question_id
+                  JOIN assessment a2 ON a2.category_id = #{categoryId}
+                  WHERE a2.course_id = #{courseId}
+                    AND aq.category_id = #{categoryId}
+                    AND aq.status = 1
+                    AND aq.deleted_at IS NULL
+              )
+              OR u.dept_id IN (
+                  SELECT cd.department_id FROM course_department cd WHERE cd.course_id = #{courseId}
+              )
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM assessment_attempt aa
+              WHERE aa.assessment_id = #{assessmentId}
+                AND aa.user_id = u.id
+          )
+    </select>
+
+    <!-- 查询某考核下今天已提醒过的学员ID集合 -->
+    <select id="selectTodayRemindedUserIds" resultType="java.lang.Long">
+        SELECT DISTINCT msg.receiver_id
+        FROM course_student_message msg
+        WHERE msg.assessment_id = #{assessmentId}
+          AND msg.message_type = 'ASSESSMENT_REMINDER'
+          AND msg.deleted_at IS NULL
+          AND DATE(msg.created_at) = CURDATE()
+          AND msg.receiver_id IN
+          <foreach collection="userIds" item="uid" open="(" separator="," close=")">
+              #{uid}
+          </foreach>
+    </select>
+
+    <!-- 查询考核提醒发送历史分页 -->
+    <select id="selectReminderPage"
+            resultType="org.example.nursingtrainingbackend.modules.assessment.vo.ReminderItemVO">
+        SELECT
+            msg.id AS messageId,
+            msg.assessment_id AS assessmentId,
+            msg.course_title AS courseTitle,
+            a.title AS assessmentTitle,
+            a.course_id AS courseId,
+            msg.receiver_id AS receiverId,
+            u.username AS receiverUsername,
+            u.real_name AS receiverName,
+            u.dept_id AS departmentId,
+            d.name AS departmentName,
+            msg.sender_id AS senderId,
+            su.real_name AS senderName,
+            msg.batch_id AS batchId,
+            msg.content,
+            CASE WHEN msg.read_at IS NOT NULL THEN TRUE ELSE FALSE END AS read,
+            msg.read_at AS readAt,
+            msg.created_at AS sentAt
+        FROM course_student_message msg
+        INNER JOIN assessment a ON a.id = msg.assessment_id AND a.deleted_at IS NULL
+        LEFT JOIN user u ON u.id = msg.receiver_id AND u.deleted_at IS NULL
+        LEFT JOIN user su ON su.id = msg.sender_id
+        LEFT JOIN department d ON d.id = u.dept_id
+        WHERE msg.assessment_id = #{assessmentId}
+          AND msg.message_type = 'ASSESSMENT_REMINDER'
+          AND msg.deleted_at IS NULL
+        <if test="keyword != null and keyword != ''">
+            AND (u.real_name LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.username LIKE CONCAT('%', #{keyword}, '%')
+                 OR msg.content LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="readStatus != null and readStatus == 'READ'">
+            AND msg.read_at IS NOT NULL
+        </if>
+        <if test="readStatus != null and readStatus == 'UNREAD'">
+            AND msg.read_at IS NULL
+        </if>
+        <if test="batchId != null and batchId != ''">
+            AND msg.batch_id = #{batchId}
+        </if>
+        <if test="senderId != null">
+            AND msg.sender_id = #{senderId}
+        </if>
+        <if test="sentFrom != null">
+            AND msg.created_at &gt;= #{sentFrom}
+        </if>
+        <if test="sentTo != null">
+            AND msg.created_at &lt;= #{sentTo}
+        </if>
+        ORDER BY msg.created_at DESC, msg.id DESC
     </select>
 
 </mapper>
