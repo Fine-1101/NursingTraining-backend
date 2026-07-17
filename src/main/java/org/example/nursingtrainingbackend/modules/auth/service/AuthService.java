@@ -6,5 +6,6 @@ import org.example.nursingtrainingbackend.modules.auth.vo.LoginResponse;
 
 public interface AuthService {
     LoginResponse login(LoginRequest request);
+    LoginResponse adminLogin(LoginRequest request);
     LoginResponse register(RegisterRequest request);
 }

@@ -28,6 +28,15 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse login(LoginRequest request) {
+        return loginForRole(request, 1, "仅允许学员账号登录");
+    }
+
+    @Override
+    public LoginResponse adminLogin(LoginRequest request) {
+        return loginForRole(request, 5, "仅允许管理员账号登录");
+    }
+
+    private LoginResponse loginForRole(LoginRequest request, int requiredRole, String roleErrorMessage) {
         User user = userMapper.selectOne(Wrappers.<User>lambdaQuery().eq(User::getUsername, request.username()));
         if (user == null
                 //|| !passwordEncoder.matches(request.password(), user.getPassword())
@@ -37,8 +46,8 @@ public class AuthServiceImpl implements AuthService {
         if (!Integer.valueOf(1).equals(user.getStatus())) {
             throw new BusinessException(ErrorCode.USER_DISABLED);
         }
-        if (!Integer.valueOf(1).equals(user.getRoleType())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "仅允许学生账号登录");
+        if (!Integer.valueOf(requiredRole).equals(user.getRoleType())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, roleErrorMessage);
         }
         AuthenticatedUser principal = new AuthenticatedUser(user.getId(), user.getUsername(), user.getRealName(), String.valueOf(user.getRoleType()));
         return new LoginResponse("Bearer", jwtService.createToken(principal), jwtService.expirationSeconds(), UserInfo.from(principal));

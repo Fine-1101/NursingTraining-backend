@@ -49,6 +49,8 @@ public class SecurityConfig {
                                 "/static/**",
                                 "/uploads/**"
                         ).permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("5")
+                        .requestMatchers("/api/learner/**").hasRole("1")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
