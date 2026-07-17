@@ -12,6 +12,8 @@ import org.example.nursingtrainingbackend.modules.learningreport.mapper.AiLearni
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -91,7 +93,7 @@ public class LearningReportTransactionService {
         report.setReportType(previous.getReportType());
         report.setReportMode(null);
         report.setPeriodStart(previous.getPeriodStart());
-        report.setPeriodEnd(previous.getPeriodEnd());
+        report.setPeriodEnd(resolveRegeneratedPeriodEnd(previous, now));
         report.setStatus(ReportStatus.PENDING.name());
         report.setStage(ReportStage.QUEUED.name());
         report.setProgress(0);
@@ -111,5 +113,20 @@ public class LearningReportTransactionService {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "创建重新生成任务失败");
         }
         return report;
+    }
+
+    /** 当前周报告刷新到当前时刻，历史周报告保持原统计截止时间。 */
+    private LocalDateTime resolveRegeneratedPeriodEnd(
+            AiLearningReport previous,
+            LocalDateTime now
+    ) {
+        LocalDate currentWeekStart = now.toLocalDate()
+                .with(DayOfWeek.MONDAY);
+        LocalDateTime previousStart = previous.getPeriodStart();
+        if (previousStart != null
+                && previousStart.toLocalDate().equals(currentWeekStart)) {
+            return now;
+        }
+        return previous.getPeriodEnd();
     }
 }

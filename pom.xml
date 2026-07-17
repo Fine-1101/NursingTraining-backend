@@ -33,6 +33,7 @@
         <aliyun-oss.version>3.18.2</aliyun-oss.version>
         <aliyun-vod.version>3.9.0</aliyun-vod.version>
         <poi.version>5.3.0</poi.version>
+        <pdfbox.version>3.0.5</pdfbox.version>
     </properties>
     <dependencies>
         <dependency>
@@ -156,6 +157,11 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>${poi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
         </dependency>
     </dependencies>
 

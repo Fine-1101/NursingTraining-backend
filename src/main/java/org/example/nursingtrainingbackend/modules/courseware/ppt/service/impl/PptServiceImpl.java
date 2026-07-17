@@ -75,21 +75,25 @@ public class PptServiceImpl implements PptService {
             "PUBLISHED->DRAFT", "PUBLISHED->OFFLINE",
             "OFFLINE->PUBLISHED"
     ));
+    /** 应用启动后补偿转换缺少预览或页数的PPT。 */
 
     @EventListener(ApplicationReadyEvent.class)
     public void recoverMissingPreviews() {
         List<Ppt> missingPreviews = pptMapper.selectList(Wrappers.<Ppt>lambdaQuery()
-                .isNull(Ppt::getFileUrl)
+                .and(wrapper -> wrapper.isNull(Ppt::getFileUrl)
+                        .or().isNull(Ppt::getPageCount)
+                        .or().le(Ppt::getPageCount, 0))
                 .isNotNull(Ppt::getOriginalUrl)
                 .orderByAsc(Ppt::getId)
                 .last("LIMIT 50"));
         if (missingPreviews.isEmpty()) {
             return;
         }
-        log.info("Queueing missing PPT previews after startup, count={}", missingPreviews.size());
+        log.info("Queueing PPTs with missing preview metadata after startup, count={}", missingPreviews.size());
         missingPreviews.forEach(ppt -> pptConversionService.convertAsync(
                 ppt.getId(), ppt.getOriginalUrl(), ppt.getOriginalName()));
     }
+    /** 创建PPT。 */
 
     @Override
     @Transactional
@@ -124,6 +128,7 @@ public class PptServiceImpl implements PptService {
         String originalName = ppt.getOriginalName();
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                /** 在当前事务成功提交后执行后续处理。 */
                 @Override
                 public void afterCommit() {
                     pptConversionService.convertAsync(pptId, originalUrl, originalName);
@@ -135,6 +140,7 @@ public class PptServiceImpl implements PptService {
 
         return ppt;
     }
+    /** 分页查询PPT。 */
 
     @Override
     public IPage<PptListItem> pagePpt(String keyword, String status, String uploadedFrom,
@@ -169,12 +175,14 @@ public class PptServiceImpl implements PptService {
         IPage<Ppt> pptPage = pptMapper.selectPage(new Page<>(page, size), wrapper);
         return pptPage.convert(this::toListItem);
     }
+    /** 获取PPT详情。 */
 
     @Override
     public PptDetailVO getPptDetail(Long id) {
         Ppt ppt = getPptById(id);
         return toDetailVO(ppt);
     }
+    /** 更新PPT。 */
 
     @Override
     @Transactional
@@ -189,6 +197,7 @@ public class PptServiceImpl implements PptService {
         pptMapper.updateById(ppt);
         return ppt;
     }
+    /** 更新状态。 */
 
     @Override
     @Transactional
@@ -217,6 +226,7 @@ public class PptServiceImpl implements PptService {
         pptMapper.updateById(ppt);
         return ppt;
     }
+    /** 生成指定PPT原文件的临时下载地址。 */
 
     @Override
     public String getDownloadUrl(Long id, Integer expiresIn) {
@@ -238,6 +248,7 @@ public class PptServiceImpl implements PptService {
         URL url = ossClient.generatePresignedUrl(request);
         return url.toString();
     }
+    /** 从对象存储读取PPT的PDF预览文件流。 */
 
     @Override
     public PptPreviewFile getPreviewFile(Long id) {
@@ -254,12 +265,14 @@ public class PptServiceImpl implements PptService {
         long contentLength = object.getObjectMetadata().getContentLength();
         return new PptPreviewFile(object.getObjectContent(), contentLength);
     }
+    /** 重新提交指定PPT的异步转换任务。 */
 
     @Override
     public void requestConversion(Long id) {
         Ppt ppt = getPptById(id);
         pptConversionService.convertAsync(ppt.getId(), ppt.getOriginalUrl(), ppt.getOriginalName());
     }
+    /** 删除PPT。 */
 
     @Override
     @Transactional
@@ -272,6 +285,7 @@ public class PptServiceImpl implements PptService {
     }
 
     // ==================== 私有方法 ====================
+    /** 获取业务概览统计。 */
 
     @Override
     public PptOverviewVO getOverview() {
@@ -388,6 +402,7 @@ public class PptServiceImpl implements PptService {
         int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
         return String.format("%.1f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
     }
+    /** 异步删除对象存储中的文件。 */
 
     @Async
     public void asyncDeleteOssFile(String url) {

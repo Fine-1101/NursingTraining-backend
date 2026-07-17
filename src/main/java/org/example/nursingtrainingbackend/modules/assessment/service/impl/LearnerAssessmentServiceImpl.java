@@ -40,6 +40,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     private final AssessmentQuestionCourseMapper questionCourseMapper;
     private final CourseMapper courseMapper;
     private final ObjectMapper objectMapper;
+    /** 分页或按条件查询结果历史记录。 */
 
     @Override
     public PageResult<AssessmentResultHistoryItemVO> listResultHistory(
@@ -56,6 +57,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     }
 
     // ==================== 3. 查询课程考核卡片 ====================
+    /** 获取指定课程的考核卡片。 */
 
     @Override
     public AssessmentCardVO getAssessmentCard(Long courseId, Long userId) {
@@ -63,6 +65,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
                 .findFirst()
                 .orElse(null);
     }
+    /** 查询指定课程的考核卡片列表。 */
 
     @Override
     public List<AssessmentCardVO> listAssessmentCards(Long courseId, Long userId) {
@@ -182,6 +185,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     }
 
     // ==================== 4. 开始或继续考试 ====================
+    /** 创建新的答题记录，或恢复尚未提交的答题。 */
 
     @Override
     @Transactional
@@ -270,6 +274,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     }
 
     // ==================== 5. 获取试卷详情 ====================
+    /** 获取答题记录试卷。 */
 
     @Override
     public AttemptPaperVO getAttemptPaper(Long attemptId, Long userId) {
@@ -338,6 +343,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     }
 
     // ==================== 6. 保存单题答案 ====================
+    /** 保存学员答案并返回当前答题进度。 */
 
     @Override
     @Transactional
@@ -401,6 +407,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     }
 
     // ==================== 7. 交卷 ====================
+    /** 提交答题记录、计算成绩并更新考核状态。 */
 
     @Override
     @Transactional
@@ -427,6 +434,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
     }
 
     // ==================== 8. 查看成绩 ====================
+    /** 获取答题记录结果。 */
 
     @Override
     public AttemptResultVO getAttemptResult(Long attemptId, Long userId) {
@@ -485,6 +493,7 @@ public class LearnerAssessmentServiceImpl implements LearnerAssessmentService {
                 remainingAttempts
         );
     }
+    /** 获取答题记录答题解析。 */
 
     @Override
     public AttemptReviewVO getAttemptReview(Long attemptId, Long userId) {

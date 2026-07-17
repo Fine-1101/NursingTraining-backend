@@ -78,6 +78,7 @@ public class LearningReportServiceImpl implements LearningReportService {
     private final LearningReportProperties properties;
     private final RedissonClient redissonClient;
     private final ObjectMapper objectMapper;
+    /** 创建学习报告。 */
 
     @Override
     public CreateReportVO createReport(
@@ -158,6 +159,7 @@ public class LearningReportServiceImpl implements LearningReportService {
             }
         }
     }
+    /** 获取报告生成资格。 */
 
     @Override
     public ReportEligibilityVO getEligibility(
@@ -225,6 +227,7 @@ public class LearningReportServiceImpl implements LearningReportService {
                 eligible ? null : "完成至少一次有效学习后即可生成入门报告"
         );
     }
+    /** 获取本周期最新学习报告。 */
 
     @Override
     public LearningReportDetailVO getCurrent(
@@ -253,6 +256,7 @@ public class LearningReportServiceImpl implements LearningReportService {
         );
         return report == null ? null : toDetailVO(report);
     }
+    /** 获取详情。 */
 
     @Override
     public LearningReportDetailVO getDetail(Long reportId) {
@@ -281,6 +285,7 @@ public class LearningReportServiceImpl implements LearningReportService {
         }
         return detail;
     }
+    /** 分页查询历史学习报告。 */
 
     @Override
     public PageResult<LearningReportListItemVO> list(
@@ -326,6 +331,7 @@ public class LearningReportServiceImpl implements LearningReportService {
                 page.getPages()
         );
     }
+    /** 基于最新学习数据重新生成报告。 */
 
     @Override
     public RegenerateReportVO regenerate(
@@ -389,6 +395,7 @@ public class LearningReportServiceImpl implements LearningReportService {
             }
         }
     }
+    /** 提交报告反馈。 */
 
     @Override
     public SubmitReportFeedbackVO submitFeedback(

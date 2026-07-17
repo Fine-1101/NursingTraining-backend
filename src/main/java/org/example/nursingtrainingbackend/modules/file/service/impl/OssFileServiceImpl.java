@@ -56,11 +56,13 @@ public class OssFileServiceImpl implements FileService {
             "videos/originals", Set.of("video/mp4"),
             "videos/covers", Set.of("image/jpeg", "image/png")
     );
+    /** 上传并保存文件。 */
 
     @Override
     public FileUploadResponse upload(MultipartFile file, String directory) {
         return null;
     }
+    /** 上传并保存文件。 */
 
     @Override
     public FileUploadResponse upload(MultipartFile file, String directory, Authentication authentication) {
@@ -91,6 +93,7 @@ public class OssFileServiceImpl implements FileService {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, ErrorCode.FILE_UPLOAD_FAILED.getMessage(), exception);
         }
     }
+    /** 创建客户端直传文件所需的上传策略。 */
 
     @Override
     public UploadPolicyResponse createPolicy(UploadPolicyRequest request) {
@@ -157,6 +160,7 @@ public class OssFileServiceImpl implements FileService {
     private String publicUrl(String key) {
         return uploadHost() + "/" + key;
     }
+    /** 将已上传文件标记为被指定业务使用。 */
 
     @Override
     public void markFileUsed(String objectKey, String bizType, Long bizId) {

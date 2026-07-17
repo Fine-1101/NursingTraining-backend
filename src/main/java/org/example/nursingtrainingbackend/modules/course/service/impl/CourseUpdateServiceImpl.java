@@ -63,6 +63,7 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
     private PptMapper pptMapper;
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+    /** 更新课程基础信息。 */
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -130,11 +131,13 @@ public class CourseUpdateServiceImpl implements CourseUpdateService {
         vo.setUpdatedAt(course.getUpdatedAt());
         return vo;
     }
+    /** 复制并创建一份新的课程。 */
 
     @Override
     public Void NewCourse(Long courseId) {
         return null;
     }
+    /** 更新课程状态。 */
 
     @Override
     @Transactional(rollbackFor = Exception.class)

@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.example.nursingtrainingbackend.modules.course.mapper.CourseTagMapper;
+import org.example.nursingtrainingbackend.modules.course.entity.CourseTag;
 import tools.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +23,6 @@ import org.example.nursingtrainingbackend.modules.tag.dto.TagCreateDTO;
 import org.example.nursingtrainingbackend.modules.tag.dto.TagQueryDTO;
 import org.example.nursingtrainingbackend.modules.tag.dto.TagStatusDTO;
 import org.example.nursingtrainingbackend.modules.tag.dto.TagUpdateDTO;
-import org.example.nursingtrainingbackend.modules.tag.entity.CourseTag;
 import org.example.nursingtrainingbackend.modules.tag.entity.Tag;
 import org.example.nursingtrainingbackend.modules.tag.mapper.TagMapper;
 import org.example.nursingtrainingbackend.modules.tag.mapper.TagStatisticsRow;
@@ -56,6 +56,7 @@ public class TagServiceImpl implements TagService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final CourseTagMapper courseTagMapper;
+    /** 按条件查询分页数据。 */
 
     @Override
     public PageResult<TagItemVO> queryPage(TagQueryDTO query) {
@@ -72,6 +73,7 @@ public class TagServiceImpl implements TagService {
                 .toList();
         return new PageResult<>(records, result.getTotal(), result.getCurrent(), result.getSize(), result.getPages());
     }
+    /** 获取详情。 */
 
     @Override
     public TagItemVO getDetail(Long id) {
@@ -81,6 +83,7 @@ public class TagServiceImpl implements TagService {
         }
         return toItemVO(tag);
     }
+    /** 创建标签。 */
 
     @Override
     @Transactional
@@ -97,6 +100,7 @@ public class TagServiceImpl implements TagService {
         clearOverviewCacheAfterCommit();
         return toItemVO(tagMapper.selectDetailWithCount(tag.getId()));
     }
+    /** 更新标签。 */
 
     @Override
     @Transactional
@@ -118,6 +122,7 @@ public class TagServiceImpl implements TagService {
         clearOverviewCacheAfterCommit();
         return toItemVO(tagMapper.selectDetailWithCount(id));
     }
+    /** 更新状态。 */
 
     @Override
     @Transactional
@@ -135,6 +140,7 @@ public class TagServiceImpl implements TagService {
         vo.setStatus(dto.getStatus());
         return vo;
     }
+    /** 删除标签。 */
 
     @Override
     @Transactional
@@ -151,6 +157,7 @@ public class TagServiceImpl implements TagService {
         tagMapper.deleteById(id);
         clearOverviewCacheAfterCommit();
     }
+    /** 批量执行标签状态变更或删除操作。 */
 
     @Override
     @Transactional
@@ -193,6 +200,7 @@ public class TagServiceImpl implements TagService {
         clearOverviewCacheAfterCommit();
         return result;
     }
+    /** 获取业务概览统计。 */
 
     @Override
     public TagOverviewVO getOverview() {
@@ -250,6 +258,7 @@ public class TagServiceImpl implements TagService {
         vo.setUpdatedAt(tag.getUpdatedAt());
         return vo;
     }
+    /** 获取标签使用统计。 */
 
     @Override
     public TagStatisticsVO getStatistics() {
@@ -307,6 +316,7 @@ public class TagServiceImpl implements TagService {
     private void clearOverviewCacheAfterCommit() {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                /** 在当前事务成功提交后执行后续处理。 */
                 @Override
                 public void afterCommit() {
                     try {

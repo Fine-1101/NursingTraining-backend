@@ -24,6 +24,7 @@ public class LearningReportGenerationServiceImpl
     private final LearningReportProperties properties;
     private final AiReportClient aiReportClient;
     private final RuleBasedReportService ruleBasedReportService;
+    /** 生成学习报告内容。 */
 
     @Override
     public GeneratedLearningReport generate(

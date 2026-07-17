@@ -25,11 +25,13 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final DepartmentMapper departmentMapper;
+    /** 校验学员账号密码并签发登录令牌。 */
 
     @Override
     public LoginResponse login(LoginRequest request) {
         return loginForRole(request, 1, "仅允许学员账号登录");
     }
+    /** 校验管理员账号密码并签发登录令牌。 */
 
     @Override
     public LoginResponse adminLogin(LoginRequest request) {
@@ -52,6 +54,7 @@ public class AuthServiceImpl implements AuthService {
         AuthenticatedUser principal = new AuthenticatedUser(user.getId(), user.getUsername(), user.getRealName(), String.valueOf(user.getRoleType()));
         return new LoginResponse("Bearer", jwtService.createToken(principal), jwtService.expirationSeconds(), UserInfo.from(principal));
     }
+    /** 注册学员账号并完成自动登录。 */
 
     @Override
     public LoginResponse register(RegisterRequest request) {

@@ -39,6 +39,7 @@ public class AssessmentQuestionServiceImpl implements AssessmentQuestionService 
     private final AssessmentQuestionCourseMapper questionCourseMapper;
     private final CategoryMapper categoryMapper;
     private final CourseMapper courseMapper;
+    /** 分页或按条件查询题目。 */
 
     @Override
     public PageResult<QuestionListItemVO> listQuestions(QuestionQueryDTO query) {
@@ -62,6 +63,7 @@ public class AssessmentQuestionServiceImpl implements AssessmentQuestionService 
         return new PageResult<>(result.getRecords(), result.getTotal(),
                 result.getCurrent(), result.getSize(), result.getPages());
     }
+    /** 获取题目详情。 */
 
     @Override
     public QuestionDetailVO getQuestionDetail(Long questionId) {
@@ -123,6 +125,7 @@ public class AssessmentQuestionServiceImpl implements AssessmentQuestionService 
 
         return vo;
     }
+    /** 创建题目。 */
 
     @Override
     @Transactional
@@ -146,6 +149,7 @@ public class AssessmentQuestionServiceImpl implements AssessmentQuestionService 
         result.setId(question.getId());
         return result;
     }
+    /** 更新题目。 */
 
     @Override
     @Transactional
@@ -176,6 +180,7 @@ public class AssessmentQuestionServiceImpl implements AssessmentQuestionService 
                 .eq(AssessmentQuestionCourse::getQuestionId, questionId));
         saveCourseIds(questionId, dto.getCourseIds());
     }
+    /** 更新题目状态。 */
 
     @Override
     @Transactional
@@ -188,6 +193,7 @@ public class AssessmentQuestionServiceImpl implements AssessmentQuestionService 
                 .eq(AssessmentQuestion::getId, questionId)
                 .set(AssessmentQuestion::getStatus, dto.getStatus()));
     }
+    /** 删除题目。 */
 
     @Override
     @Transactional

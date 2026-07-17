@@ -48,6 +48,7 @@ public class CoursePointServiceImpl implements CoursePointService {
 
     @Autowired
     private PptMapper pptMapper;
+    /** 获取课程点详情。 */
 
     @Override
     public CoursePointDetailVO getPointDetail(Long courseId, Long chapterId, Long pointId) {

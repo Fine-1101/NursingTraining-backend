@@ -5,6 +5,8 @@ import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.ObjectMetadata;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.example.nursingtrainingbackend.config.properties.OssProperties;
 import org.example.nursingtrainingbackend.config.properties.PptConversionProperties;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.entity.Ppt;
@@ -40,6 +42,7 @@ public class PptConversionServiceImpl implements PptConversionService {
     private final OssProperties ossProperties;
     private final PptConversionProperties conversionProperties;
     private final PptMapper pptMapper;
+    /** 异步将PPT转换为PDF，并回写预览地址和页数。 */
 
     @Override
     @Async("pptConversionExecutor")
@@ -72,19 +75,22 @@ public class PptConversionServiceImpl implements PptConversionService {
             runLibreOffice(inputFile, outputDirectory, profileDirectory);
 
             Path pdfFile = findGeneratedPdf(outputDirectory);
+            int pageCount = readPageCount(pdfFile);
             String objectKey = buildPreviewObjectKey(pptId);
             uploadPdf(ossClient, objectKey, pdfFile);
 
             Ppt update = new Ppt();
             update.setId(pptId);
             update.setFileUrl(publicUrl(objectKey));
+            update.setPageCount(pageCount);
             int updated = pptMapper.updateById(update);
             if (updated == 0) {
                 ossClient.deleteObject(ossProperties.getBucketName(), objectKey);
                 log.warn("PPT record no longer exists; converted file removed, pptId={}", pptId);
                 return;
             }
-            log.info("PPT converted to PDF successfully, pptId={}, objectKey={}", pptId, objectKey);
+            log.info("PPT converted to PDF successfully, pptId={}, pageCount={}, objectKey={}",
+                    pptId, pageCount, objectKey);
         } catch (Exception exception) {
             log.error("PPT conversion failed, pptId={}, originalUrl={}", pptId, originalUrl, exception);
         } finally {
@@ -136,6 +142,16 @@ public class PptConversionServiceImpl implements PptConversionService {
                     .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".pdf"))
                     .findFirst()
                     .orElseThrow(() -> new IOException("LibreOffice did not generate a PDF file"));
+        }
+    }
+
+    private int readPageCount(Path pdfFile) throws IOException {
+        try (PDDocument document = Loader.loadPDF(pdfFile.toFile())) {
+            int pageCount = document.getNumberOfPages();
+            if (pageCount <= 0) {
+                throw new IOException("Converted PDF contains no pages");
+            }
+            return pageCount;
         }
     }
 

@@ -29,12 +29,14 @@ public class LocalFileServiceImpl implements FileService {
     private final UploadProperties uploadProperties;
     private final String localDirectory;
     private final String localBaseUrl;
+    /** 初始化服务实现及其运行依赖。 */
 
     public LocalFileServiceImpl(UploadProperties uploadProperties, Environment env) {
         this.uploadProperties = uploadProperties;
         this.localDirectory = env.getProperty("app.upload.local-directory", "./uploads");
         this.localBaseUrl = env.getProperty("app.upload.local-base-url", "/uploads");
     }
+    /** 上传并保存文件。 */
 
     @Override
     public FileUploadResponse upload(MultipartFile file, String directory) {
@@ -54,16 +56,19 @@ public class LocalFileServiceImpl implements FileService {
             throw new BusinessException(ErrorCode.FILE_UPLOAD_FAILED, ErrorCode.FILE_UPLOAD_FAILED.getMessage(), e);
         }
     }
+    /** 上传并保存文件。 */
 
     @Override
     public FileUploadResponse upload(MultipartFile file, String directory, Authentication authentication) {
         return null;
     }
+    /** 创建客户端直传文件所需的上传策略。 */
 
     @Override
     public UploadPolicyResponse createPolicy(UploadPolicyRequest request) {
         throw new BusinessException(ErrorCode.BAD_REQUEST, "本地存储不支持客户端直传（Policy），请使用服务端上传");
     }
+    /** 将已上传文件标记为被指定业务使用。 */
 
     @Override
     public void markFileUsed(String objectKey, String bizType, Long bizId) {

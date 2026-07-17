@@ -67,6 +67,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher eventPublisher;
+    /** 获取学员首页聚合数据。 */
     @Override
     public HomePageVO getHomePage() {
         Long userId = SecurityUtils.currentUserId();
@@ -119,6 +120,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
 
         return homePageVO;
     }
+    /** 分页查询推荐课程。 */
 
     @Override
     public PageResult<RecommendedCourseVO> getRecommendedCourses(LearnerPageQuery query) {
@@ -150,6 +152,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         return new PageResult<>(courses, (long) recommendedCourseIds.size(), 
                 query.getPage().longValue(), query.getSize().longValue(), totalPages);
     }
+    /** 分页查询继续学习课程。 */
 
     @Override
     public PageResult<ContinueCourseVO> getContinueCourses(LearnerPageQuery query) {
@@ -179,6 +182,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         return new PageResult<>(courses, progressPage.getTotal(), 
                 progressPage.getCurrent(), progressPage.getSize(), progressPage.getPages());
     }
+    /** 分页查询最近学习记录。 */
 
     @Override
     public PageResult<LearningRecordVO> getRecentRecords(LearnerPageQuery query) {
@@ -456,8 +460,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
                     vo.setCourseId(courseId);
                     vo.setTitle(course.getTitle());
                     vo.setCoverUrl(course.getCoverUrl());
-                    // TODO: 讲师姓名需要从其他地方获取，暂时设为null
-                    vo.setInstructorName(null);
+                    vo.setInstructorName(resolveInstructorName(course));
                     vo.setCategoryName(categoryNameMap.get(course.getCategoryId()));
                     
                     Integer required = courseTypeMap.get(courseId);
@@ -521,7 +524,7 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         vo.setCourseId(progress.getCourseId());
         vo.setTitle(course.getTitle());
         vo.setCoverUrl(course.getCoverUrl());
-        vo.setInstructorName(null); // TODO
+        vo.setInstructorName(resolveInstructorName(course));
         
         // 获取类别名称
         if (course.getCategoryId() != null) {
@@ -562,6 +565,19 @@ public class LearnerHomeServiceImpl implements LearnerHomeService {
         vo.setLastLearnedAt(progress.getUpdatedAt());
         
         return vo;
+    }
+
+    private String resolveInstructorName(Course course) {
+        if (course == null || course.getInstructorId() == null) {
+            return null;
+        }
+        User instructor = userMapper.selectById(course.getInstructorId());
+        if (instructor == null || instructor.getDeletedAt() != null) {
+            return null;
+        }
+        return instructor.getRealName() != null && !instructor.getRealName().isBlank()
+                ? instructor.getRealName()
+                : instructor.getUsername();
     }
 
     /**

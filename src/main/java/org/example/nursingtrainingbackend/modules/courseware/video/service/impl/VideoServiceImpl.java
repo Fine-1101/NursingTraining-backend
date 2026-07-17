@@ -85,6 +85,7 @@ public class VideoServiceImpl implements VideoService {
 
     @Autowired(required = false)
     private OssConfig ossConfig;
+    /** 生成指定视频的临时播放地址。 */
 
     @Override
     public VideoPlayUrlVO getVideoPlayUrl(Long id, Integer expiresIn) {
@@ -143,6 +144,7 @@ public class VideoServiceImpl implements VideoService {
         }
         return vo;
     }
+    /** 分页或按条件查询视频。 */
     @Override
     public PageResult<VideoListItemVO> listVideos(String keyword, String status,
                                                   String uploadedFrom, String uploadedTo,
@@ -257,6 +259,7 @@ public class VideoServiceImpl implements VideoService {
         }
         return String.format("%.1f %s", value, units[unitIndex]);
     }
+    /** 获取视频概览。 */
 
     @Override
     public VideoOverviewVO getVideoOverview() {
@@ -294,6 +297,7 @@ public class VideoServiceImpl implements VideoService {
 
         return overview;
     }
+    /** 获取视频详情。 */
 
     @Override
     public VideoDetailVO getVideoDetail(Long id) {
@@ -306,6 +310,7 @@ public class VideoServiceImpl implements VideoService {
 
         return convertToDetailVO(video);
     }
+    /** 上传并登记视频。 */
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -443,6 +448,7 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException(ErrorCode.VIDEO_OSS_OBJECT_NOT_FOUND, "封面文件不存在");
         }
     }
+    /** 更新视频状态。 */
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -505,6 +511,7 @@ public class VideoServiceImpl implements VideoService {
         }
         return response;
     }
+    /** 更新视频。 */
 
 
     @Override
@@ -559,6 +566,7 @@ public class VideoServiceImpl implements VideoService {
 
         return response;
     }
+    /** 删除视频。 */
 
 
     @Override
@@ -589,6 +597,7 @@ public class VideoServiceImpl implements VideoService {
         String coverUrl = video.getCoverUrl();
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            /** 在当前事务成功提交后执行后续处理。 */
             @Override
             public void afterCommit() {
                 cleanupVideoOssObjects(videoUrl, coverUrl);
@@ -625,6 +634,7 @@ public class VideoServiceImpl implements VideoService {
             }
         }
     }
+    /** 批量发布视频。 */
 
 
     @Override
@@ -683,6 +693,7 @@ public class VideoServiceImpl implements VideoService {
 
         return response;
     }
+    /** 批量删除视频。 */
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -723,6 +734,7 @@ public class VideoServiceImpl implements VideoService {
                 .toList();
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            /** 在当前事务成功提交后执行后续处理。 */
             @Override
             public void afterCommit() {
                 for (String videoUrl : videoUrls) {

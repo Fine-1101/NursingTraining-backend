@@ -85,6 +85,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
 
 
     // ==================== 1. 分页查询学习记录 ====================
+    /** 获取学习记录。 */
 
     @Override
     public PageResult<LearningRecordVO> getRecords(RecordQuery query) {
@@ -143,6 +144,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     }
 
     // ==================== 2. 学习进度概览 ====================
+    /** 获取业务概览统计。 */
 
     @Override
     public RecordOverviewVO getOverview(String range) {
@@ -197,6 +199,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     }
 
     // ==================== 3. 学习日历 ====================
+    /** 获取学习日历。 */
 
     @Override
     public CalendarVO getCalendar(Integer year, Integer month) {
@@ -232,6 +235,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     }
 
     // ==================== 4. 单条记录详情 ====================
+    /** 获取学习记录详情。 */
 
     @Override
     public List<LearningRecordVO> getRecordDetail(String id) {
@@ -255,6 +259,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     }
 
     // ==================== 5. 手动标记完成 ====================
+    /** 将指定学习记录对应的资源标记为完成。 */
 
     @Override
     @Transactional
@@ -307,6 +312,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     }
 
     // ==================== 6. 重置进度 ====================
+    /** 重置指定学习记录对应的学习进度。 */
 
     @Override
     @Transactional
@@ -341,6 +347,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     }
 
     // ==================== 7. 学习统计 ====================
+    /** 获取学习记录统计。 */
 
     @Override
     public RecordStatsVO getStats(String range) {
@@ -383,6 +390,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
             throw new BusinessException(ErrorCode.LEARNER_RECORD_STATS_FAILED);
         }
     }
+    /** 获取学习资源分布数据。 */
 
     @Override
     public List<ResourceDistributionVO> getResourceDistribution(String range) {
@@ -401,6 +409,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     }
 
     // ==================== 9. 频率趋势 ====================
+    /** 获取学习频次趋势。 */
 
     @Override
     public FrequencyTrendVO getFrequencyTrend(String range) {
@@ -421,6 +430,7 @@ public class LearnerRecordServiceImpl implements LearnerRecordService {
     }
 
     // ==================== 10. 学习最多课程 ====================
+    /** 分页查询热门课程。 */
 
     @Override
     public PageResult<TopCourseVO> getTopCourses(TopCoursesQuery query) {

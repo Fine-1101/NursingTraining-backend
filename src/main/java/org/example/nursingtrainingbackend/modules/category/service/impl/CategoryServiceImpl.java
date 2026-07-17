@@ -44,6 +44,7 @@ public class CategoryServiceImpl implements CategoryService {
     private static final String TREE_CACHE_PREFIX = "nursing:category:tree:v1:";
     private static final String OVERVIEW_CACHE_KEY = "nursing:category:overview:v1";
     private static final long CACHE_TTL_MINUTES = 10;
+    /** 获取分类树。 */
 
 
     @Override
@@ -196,6 +197,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         return result;
     }
+    /** 获取详情。 */
 
     @Override
     public CategoryVO getDetail(Long id) {
@@ -218,6 +220,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         return CategoryVO.from(category, parentName, directCount, totalCount);
     }
+    /** 创建分类。 */
 
     @Override
     public CategoryVO create(CategoryCreateRequest request) {
@@ -262,6 +265,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         return CategoryVO.from(category, parentName, 0L, 0L);
     }
+    /** 更新分类。 */
 
     @Override
     @Transactional
@@ -342,6 +346,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         return CategoryEditVO.from(category, affectedCount);
     }
+    /** 更新状态。 */
 
     @Override
     @Transactional
@@ -385,6 +390,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         return new CategoryStatusVO(id, newStatus, affectedCount);
     }
+    /** 删除分类。 */
 
     @Override
     public void delete(Long id) {
@@ -409,6 +415,7 @@ public class CategoryServiceImpl implements CategoryService {
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_TREE));
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_OVERVIEW));
     }
+    /** 批量删除分类。 */
 
     @Override
     @Transactional
@@ -452,6 +459,7 @@ public class CategoryServiceImpl implements CategoryService {
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.CATEGORY_OVERVIEW));
         return new BatchDeleteVO(requestedCount, uniqueIds.size());
     }
+    /** 获取业务概览统计。 */
 
     @Override
     public CategoryOverviewResult getOverview() {

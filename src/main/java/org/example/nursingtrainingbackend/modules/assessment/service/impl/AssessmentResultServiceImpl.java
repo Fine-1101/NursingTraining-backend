@@ -53,6 +53,7 @@ public class AssessmentResultServiceImpl implements AssessmentResultService {
     private final ObjectMapper objectMapper;
 
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    /** 分页或按条件查询结果。 */
 
     @Override
     public PageResult<ResultItemVO> listResults(ResultQueryDTO query) {
@@ -71,6 +72,7 @@ public class AssessmentResultServiceImpl implements AssessmentResultService {
         return new PageResult<>(result.getRecords(), result.getTotal(),
                 result.getCurrent(), result.getSize(), result.getPages());
     }
+    /** 获取结果详情。 */
 
     @Override
     public ResultDetailVO getResultDetail(Long attemptId) {
@@ -164,6 +166,7 @@ public class AssessmentResultServiceImpl implements AssessmentResultService {
 
         return detail;
     }
+    /** 获取结果汇总。 */
 
     @Override
     public ResultSummaryVO getResultSummary(Long assessmentId) {
@@ -214,6 +217,7 @@ public class AssessmentResultServiceImpl implements AssessmentResultService {
 
         return summary;
     }
+    /** 按查询条件导出考核结果文件。 */
 
     @Override
     public void exportResults(ResultQueryDTO query, HttpServletResponse response) {

@@ -6,6 +6,7 @@ import org.example.nursingtrainingbackend.common.result.Result;
 import org.example.nursingtrainingbackend.modules.learning.dto.VideoProgressRequest;
 import org.example.nursingtrainingbackend.modules.learning.service.LearnerStudy;
 import org.example.nursingtrainingbackend.modules.learning.vo.CourseStudyVO;
+import org.example.nursingtrainingbackend.modules.learning.vo.VideoProgressVO;
 import org.example.nursingtrainingbackend.modules.courseware.ppt.vo.PptPreviewFile;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.ContentDisposition;
@@ -42,13 +43,12 @@ public class LearnerStudyController {
      * POST /api/learner/courses/{courseId}/points/{coursePointId}/videos/{videoId}/progress
      */
     @PostMapping("/{courseId}/points/{coursePointId}/videos/{videoId}/progress")
-    public Result<Void> reportVideoProgress(
+    public Result<VideoProgressVO> reportVideoProgress(
             @PathVariable Long courseId,
             @PathVariable Long coursePointId,
             @PathVariable Long videoId,
             @Valid @RequestBody VideoProgressRequest request) {
-        learnerStudy.reportVideoProgress(courseId, coursePointId, videoId, request);
-        return Result.success(null);
+        return Result.success(learnerStudy.reportVideoProgress(courseId, coursePointId, videoId, request));
     }
 
     /**

@@ -60,6 +60,7 @@ public class AssessmentParticipantServiceImpl implements AssessmentParticipantSe
     private final ConcurrentHashMap<String, LocalDateTime> rateLimitMap = new ConcurrentHashMap<>();
 
     // ==================== 查询考核参与人员 ====================
+    /** 分页或按条件查询参与人员。 */
 
     @Override
     public PageResult<ParticipantItemVO> listParticipants(Long assessmentId, ParticipantQueryDTO query) {
@@ -91,6 +92,7 @@ public class AssessmentParticipantServiceImpl implements AssessmentParticipantSe
     }
 
     // ==================== 提醒未参加考核人员 ====================
+    /** 向符合条件的考核参与人员发送提醒。 */
 
     @Override
     @Transactional
@@ -226,6 +228,7 @@ public class AssessmentParticipantServiceImpl implements AssessmentParticipantSe
         final Long finalAssessmentId = assessmentId;
         final String finalBatchId = batchId;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            /** 在当前事务成功提交后执行后续处理。 */
             @Override
             public void afterCommit() {
                 for (CourseStudentMessage msg : messagesToSend) {
@@ -255,6 +258,7 @@ public class AssessmentParticipantServiceImpl implements AssessmentParticipantSe
     }
 
     // ==================== 查询考核提醒发送历史 ====================
+    /** 分页或按条件查询提醒。 */
 
     @Override
     public PageResult<ReminderItemVO> listReminders(Long assessmentId, ReminderQueryDTO query) {

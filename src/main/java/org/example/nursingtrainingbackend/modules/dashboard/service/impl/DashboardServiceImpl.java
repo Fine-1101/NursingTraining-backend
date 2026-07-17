@@ -44,6 +44,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final CourseMapper courseMapper;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    /** 获取仪表盘。 */
 
 
     @Override
@@ -75,6 +76,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         return vo;
     }
+    /** 清除仪表盘统计缓存。 */
 
     @Override
     public void evictDashboardCache() {
@@ -88,6 +90,7 @@ public class DashboardServiceImpl implements DashboardService {
             log.warn("清除仪表盘缓存失败");
         }
     }
+    /** 获取课程学习趋势。 */
 
     @Override
     public CourseLearningTrendVO getCourseLearningTrend(Long courseId, String range, String granularity) {
@@ -125,6 +128,7 @@ public class DashboardServiceImpl implements DashboardService {
                 .points(points)
                 .build();
     }
+    /** 获取学习趋势下钻数据。 */
 
     @Override
     public LearningTrendDrillVO getLearningTrendDrill(int year, int month, Integer weekIndex) {

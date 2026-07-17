@@ -43,6 +43,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     private final CategoryMapper categoryMapper;
 
     // ==================== 8. 查询考核列表 ====================
+    /** 分页或按条件查询考核。 */
 
     @Override
     public PageResult<AssessmentListItemVO> listAssessments(AssessmentListQuery query) {
@@ -64,6 +65,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     // ==================== 9. 创建考核草稿 ====================
+    /** 创建考核。 */
 
     @Override
     @Transactional
@@ -108,6 +110,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     // ==================== 10. 查询考核详情 ====================
+    /** 获取考核详情。 */
 
     @Override
     public AssessmentDetailVO getAssessmentDetail(Long assessmentId) {
@@ -175,6 +178,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     // ==================== 11. 修改考核草稿 ====================
+    /** 更新考核。 */
 
     @Override
     @Transactional
@@ -222,6 +226,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     // ==================== 12. 发布前检查题量 ====================
+    /** 检查题目容量。 */
 
     @Override
     public QuestionCapacityVO checkQuestionCapacity(Long assessmentId) {
@@ -269,6 +274,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     // ==================== 13. 发布考核 ====================
+    /** 发布考核。 */
 
     @Override
     @Transactional
@@ -327,6 +333,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     // ==================== 14. 关闭考核 ====================
+    /** 关闭考核。 */
 
     @Override
     @Transactional
@@ -346,6 +353,7 @@ public class AssessmentServiceImpl implements AssessmentService {
     }
 
     // ==================== 15. 删除考核草稿 ====================
+    /** 删除考核。 */
 
     @Override
     @Transactional

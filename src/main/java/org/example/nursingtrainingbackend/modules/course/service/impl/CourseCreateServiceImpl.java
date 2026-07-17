@@ -76,10 +76,12 @@ public class CourseCreateServiceImpl implements CourseCreateService {
     @Autowired
     private FileService fileService;
     private final ApplicationEventPublisher eventPublisher;
+    /** 初始化服务实现及其运行依赖。 */
 
     public CourseCreateServiceImpl(ApplicationEventPublisher eventPublisher) {
         this.eventPublisher = eventPublisher;
     }
+    /** 获取讲师选项。 */
 
     @Override
     public List<InstructorOptionVO> getInstructorOptions(String keyword, Integer limit) {
@@ -106,6 +108,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         }).toList();
 
     }
+    /** 获取部门选项。 */
 
     @Override
     public List<DepartmentOptionVO> getDepartmentOptions() {
@@ -117,6 +120,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
             return vo;
         }).toList();
     }
+    /** 创建课程初始化信息。 */
 
     @Override
     @Transactional
@@ -163,6 +167,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         //eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.DASHBOARD));
         return vo;
     }
+    /** 创建章节。 */
 
     @Override
     public CreateChapterVO createChapter(Long courseId, String title) {
@@ -187,6 +192,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
 
 
     }
+    /** 更新章节。 */
 
     @Override
     @Transactional
@@ -220,6 +226,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
+    /** 创建课程点。 */
 
     @Override
     @Transactional
@@ -282,6 +289,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
+    /** 更新课程点。 */
 
     @Override
     @Transactional
@@ -349,6 +357,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
+    /** 删除课程点。 */
 
     @Override
     @Transactional
@@ -395,6 +404,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         }
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
     }
+    /** 删除章节。 */
 
     @Override
     @Transactional
@@ -439,6 +449,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         }
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
     }
+    /** 获取课程详情。 */
 
     @Override
     public CourseDetailVO getCourseDetail(Long courseId) {
@@ -613,6 +624,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         }
         return 3; // 第三步：规则确认/已发布
     }
+    /** 更新章节顺序。 */
 
     @Override
     @Transactional
@@ -654,6 +666,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
+    /** 更新课程点顺序。 */
 
     @Override
     @Transactional
@@ -701,6 +714,7 @@ public class CourseCreateServiceImpl implements CourseCreateService {
         eventPublisher.publishEvent(new CacheEvictionEvent(this, CacheEvictionEvent.Scope.COURSE_STUDY));
         return vo;
     }
+    /** 更新课程完成规则。 */
 
     @Override
     @Transactional

@@ -77,6 +77,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
     private final CourseTagMapper courseTagMapper;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    /** 获取学员课程。 */
 
     @Override
     public PageResult<LearnerCourseVO> getLearnerCourses(LearnerCourseQuery query) {
@@ -145,6 +146,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         return new PageResult<>(pageRecords, (long) total,
                 query.getPage().longValue(), query.getSize().longValue(), totalPages);
     }
+    /** 获取学员课程状态统计。 */
 
     @Override
     public CourseStatsVO getLearnerCourseStats() {
@@ -193,6 +195,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
 
         return stats;
     }
+    /** 初始化指定课程的学员学习进度。 */
 
     @Override
     @Transactional
@@ -253,6 +256,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
 
         return vo;
     }
+    /** 获取课程详情。 */
 
     @Override
     public LearnerCourseDetailVO getCourseDetail(Long courseId) {
@@ -815,7 +819,7 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         vo.setTitle(course.getTitle());
         vo.setSummary(course.getSummary());
         vo.setCoverUrl(course.getCoverUrl());
-        vo.setInstructorName(null); // TODO: 讲师姓名
+        vo.setInstructorName(resolveInstructorName(course));
 
         vo.setCategoryName(categoryNameMap.get(course.getCategoryId()));
 
@@ -844,6 +848,17 @@ public class LearnerCourseServiceImpl implements LearnerCourseService {
         }
 
         return vo;
+    }
+
+    private String resolveInstructorName(Course course) {
+        if (course == null || course.getInstructorId() == null) {
+            return null;
+        }
+        User instructor = userMapper.selectById(course.getInstructorId());
+        if (instructor == null || instructor.getDeletedAt() != null) {
+            return null;
+        }
+        return StringUtils.hasText(instructor.getRealName()) ? instructor.getRealName() : instructor.getUsername();
     }
 
     private List<LearnerCourseVO> applyFilters(List<LearnerCourseVO> courses, LearnerCourseQuery query) {

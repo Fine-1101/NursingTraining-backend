@@ -48,6 +48,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
 
     private final ObjectMapper objectMapper;
     private final DashboardService dashboardService;
+    /** 获取当前登录用户的基本信息。 */
     @Override
     public CurrentUserVO getCurrentUser() {
         Long currentUserId = SecurityUtils.currentUserId();
@@ -77,6 +78,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         }
         return vo;
     }
+    /** 按条件查询学员。 */
 
     @Override
     public PageResult<StudentListItemVO> queryStudents(StudentQueryDTO query) {
@@ -92,12 +94,14 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         return new PageResult<>(result.getRecords(), result.getTotal(),
                 result.getCurrent(), result.getSize(), result.getPages());
     }
+    /** 获取学员详情。 */
 
     @Override
     public StudentDetailVO getStudentDetail(Long studentId) {
         User student = getStudentOrThrow(studentId);
         return buildStudentDetail(student);
     }
+    /** 更新学员。 */
 
     @Override
     @Transactional
@@ -135,6 +139,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
 
         return buildStudentDetail(userMapper.selectById(studentId));
     }
+    /** 删除学员。 */
 
     @Override
     @Transactional
@@ -152,6 +157,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         vo.setDeletedAt(now);
         return vo;
     }
+    /** 获取部门分布数据。 */
 
     @Override
     public DepartmentDistributionVO getDepartmentDistribution(boolean activeOnly) {
@@ -197,6 +203,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         }
         return vo;
     }
+    /** 获取指定学员的课程进度。 */
 
     @Override
     public CourseProgressVO getCourseProgress(Long studentId) {
@@ -227,6 +234,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         vo.setItems(items);
         return vo;
     }
+    /** 将指定学员的课程进度标记为完成。 */
 
     @Override
     @Transactional
@@ -269,6 +277,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         evictDashboardCacheAfterCommit();
         return vo;
     }
+    /** 重置指定学习记录对应的学习进度。 */
 
     @Override
     @Transactional
@@ -312,6 +321,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         evictDashboardCacheAfterCommit();
         return vo;
     }
+    /** 获取部门选项。 */
 
     @Override
     public List<DepartmentOptionVO> getDepartmentOptions() {
@@ -377,6 +387,7 @@ public class SettingsStudentServiceImpl implements SettingsStudentService {
         if (TransactionSynchronizationManager.isActualTransactionActive()
                 && TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                /** 在当前事务成功提交后执行后续处理。 */
                 @Override
                 public void afterCommit() {
                     dashboardService.evictDashboardCache();

@@ -50,6 +50,7 @@ public class ArticleServiceImpl implements ArticleService {
     private final ArticleStatSnapshotMapper snapshotMapper;
 
     private final FileService fileService;
+    /** 分页或按条件查询文章。 */
     
     @Override
     public PageResult<ArticleListItemVO> listArticles(String keyword, String status, 
@@ -115,6 +116,7 @@ public class ArticleServiceImpl implements ArticleService {
         return new PageResult<>(voList, resultPage.getTotal(), 
                 resultPage.getCurrent(), resultPage.getSize(), resultPage.getPages());
     }
+    /** 获取文章概览。 */
     
     @Override
     public ArticleOverviewVO getArticleOverview() {
@@ -171,6 +173,7 @@ public class ArticleServiceImpl implements ArticleService {
         }
         return ((double)(currentValue - previousValue) / previousValue) * 100.0;
     }
+    /** 获取文章详情。 */
     
     @Override
     public ArticleDetailVO getArticleDetail(Long id) {
@@ -184,6 +187,7 @@ public class ArticleServiceImpl implements ArticleService {
         
         return convertToDetailVO(article);
     }
+    /** 获取文章预览数据。 */
     
     @Override
     public ArticlePreviewVO previewArticle(Long id) {
@@ -197,6 +201,7 @@ public class ArticleServiceImpl implements ArticleService {
         
         return convertToPreviewVO(article);
     }
+    /** 上传并登记文章。 */
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -267,6 +272,7 @@ public class ArticleServiceImpl implements ArticleService {
         
         return response;
     }
+    /** 更新文章。 */
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -324,6 +330,7 @@ public class ArticleServiceImpl implements ArticleService {
         
         return response;
     }
+    /** 更新文章状态。 */
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -374,6 +381,7 @@ public class ArticleServiceImpl implements ArticleService {
         
         return response;
     }
+    /** 删除文章。 */
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -392,6 +400,7 @@ public class ArticleServiceImpl implements ArticleService {
                 .set(Article::getDeletedAt, LocalDateTime.now());
         articleMapper.update(null, updateWrapper);
     }
+    /** 批量发布文章。 */
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -432,6 +441,7 @@ public class ArticleServiceImpl implements ArticleService {
         
         return response;
     }
+    /** 批量删除文章。 */
     
     @Override
     @Transactional(rollbackFor = Exception.class)

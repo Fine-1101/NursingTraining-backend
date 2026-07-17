@@ -29,6 +29,7 @@ public class SystemUserServiceImpl implements SystemUserService {
     private final SystemUserMapper systemUserMapper;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    /** 按条件查询分页数据。 */
 
     @Override
     public PageResult<SystemUserItemVO> queryPage(SystemUserQueryDTO query) {
@@ -42,6 +43,7 @@ public class SystemUserServiceImpl implements SystemUserService {
         return new PageResult<>(result.getRecords(), result.getTotal(),
                 result.getCurrent(), result.getSize(), result.getPages());
     }
+    /** 获取详情。 */
 
     @Override
     public SystemUserItemVO getDetail(Long id) {
@@ -51,6 +53,7 @@ public class SystemUserServiceImpl implements SystemUserService {
         }
         return toItemVO(user);
     }
+    /** 创建用户。 */
 
     @Override
     @Transactional
@@ -73,6 +76,7 @@ public class SystemUserServiceImpl implements SystemUserService {
         userMapper.insert(user);
         return toItemVO(userMapper.selectById(user.getId()));
     }
+    /** 更新用户。 */
 
     @Override
     @Transactional
@@ -88,6 +92,7 @@ public class SystemUserServiceImpl implements SystemUserService {
         userMapper.updateById(existing);
         return toItemVO(userMapper.selectById(id));
     }
+    /** 更新状态。 */
 
     @Override
     @Transactional
@@ -100,6 +105,7 @@ public class SystemUserServiceImpl implements SystemUserService {
                 .eq(User::getId, id)
                 .set(User::getStatus, dto.getStatus()));
     }
+    /** 删除用户。 */
 
     @Override
     @Transactional
@@ -110,6 +116,7 @@ public class SystemUserServiceImpl implements SystemUserService {
         }
         userMapper.deleteById(id);
     }
+    /** 重置用户密码并进行加密存储。 */
 
     @Override
     @Transactional

@@ -29,6 +29,7 @@ public class RuleBasedReportServiceImpl
                     + "不构成临床诊断、治疗或护理操作依据。";
 
     private final LearningReportProperties properties;
+    /** 生成学习报告内容。 */
 
     @Override
     public GeneratedLearningReport generate(

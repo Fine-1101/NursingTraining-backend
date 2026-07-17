@@ -92,6 +92,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
+    /** 分页查询课程。 */
 
     @Override
     public PageResult<CourseItemVO> getCourses(GetCourseDTO dto) {
@@ -132,6 +133,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
         return PageResult.from(result);
     }
+    /** 获取课程概览。 */
 
     @Override
     public CourseOverviewVO getCourseOverview() {
@@ -160,6 +162,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
         return vo;
     }
+    /** 获取课程预览。 */
 
     @Override
     public CourseDetailVO getCoursePreview(Long courseId) {
@@ -309,6 +312,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
 
     private static final String[] EXPORT_HEADERS = {"课程名称", "类别", "讲师", "学员数", "发布状态", "更新时间"};
     private static final DateTimeFormatter EXPORT_FILENAME_FMT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    /** 按查询条件导出课程数据文件。 */
 
     @Override
     public void exportCourses(ExportCourseDTO dto, HttpServletResponse response) {
@@ -387,6 +391,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
     }
 
     // ==================== 修改课程状态 ====================
+    /** 更新课程状态。 */
 
     @Override
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
@@ -448,6 +453,7 @@ public class CourseManagementServiceImpl implements CourseManagementService {
     }
 
     // ==================== 删除课程 ====================
+    /** 删除课程。 */
 
     @Override
     @org.springframework.transaction.annotation.Transactional

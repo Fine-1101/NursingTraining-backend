@@ -33,6 +33,7 @@ public class LearningSnapshotServiceImpl
 
     private final UserMapper userMapper;
     private final LearningSnapshotMapper learningSnapshotMapper;
+    /** 聚合指定周期的学习行为，生成周学习报告数据快照。 */
 
     @Override
     public LearningReportSnapshot buildWeeklySnapshot(

@@ -24,6 +24,7 @@ import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseProg
 import org.example.nursingtrainingbackend.modules.learning.mapper.UserCourseResourceProgressMapper;
 import org.example.nursingtrainingbackend.modules.learning.service.LearnerStudy;
 import org.example.nursingtrainingbackend.modules.learning.vo.CourseStudyVO;
+import org.example.nursingtrainingbackend.modules.learning.vo.VideoProgressVO;
 import org.example.nursingtrainingbackend.modules.user.entity.Department;
 import org.example.nursingtrainingbackend.modules.user.mapper.DepartmentMapper;
 import org.example.nursingtrainingbackend.modules.tag.entity.Tag;
@@ -75,6 +76,7 @@ public class LearnerStudyImpl implements LearnerStudy {
     private final TagMapper tagMapper;
     private final CourseTagMapper courseTagMapper;
     private final StringRedisTemplate redisTemplate;
+    /** 获取课程学习页所需的课程点、资源和导航数据。 */
 
     @Override
     @Transactional
@@ -127,6 +129,7 @@ public class LearnerStudyImpl implements LearnerStudy {
         vo.setNavigation(navigationVO);
         return vo;
     }
+    /** 标记学习资源完成，并级联更新课程点和课程进度。 */
 
     @Override
     @Transactional
@@ -174,6 +177,7 @@ public class LearnerStudyImpl implements LearnerStudy {
         recalculatePointProgress(userId, courseId, coursePointId, now);
         recalculateCourseProgress(userId, courseId, now);
     }
+    /** 校验学员访问权限并返回PPT预览文件流。 */
 
     @Override
     public PptPreviewFile getPptPreview(Long coursePointId, Long pptId) {
@@ -194,9 +198,10 @@ public class LearnerStudyImpl implements LearnerStudy {
         }
         return pptService.getPreviewFile(pptId);
     }
+    /** 上报视频播放进度，并在满足条件时完成资源。 */
 
     @Override
-    public void reportVideoProgress(Long courseId, Long coursePointId, Long videoId, VideoProgressRequest request) {
+    public VideoProgressVO reportVideoProgress(Long courseId, Long coursePointId, Long videoId, VideoProgressRequest request) {
         Long userId = SecurityUtils.currentUserId();
         validateLearner(userId);
 
@@ -208,12 +213,16 @@ public class LearnerStudyImpl implements LearnerStudy {
         LocalDateTime now = LocalDateTime.now();
 
         // 取历史最远播放位置
-        int currentMax = request.currentSeconds();
+        int reportedCurrentSeconds = request.isVideoEnded() ? request.durationSeconds() : request.currentSeconds();
+        int currentMax = reportedCurrentSeconds;
         Object existingMaxObj = redisTemplate.opsForHash().get(cacheKey, "maxPositionSeconds");
         if (existingMaxObj != null) {
             try {
                 currentMax = Math.max(currentMax, Integer.parseInt(existingMaxObj.toString()));
             } catch (NumberFormatException ignored) {}
+        }
+        if (request.isVideoEnded()) {
+            currentMax = request.durationSeconds();
         }
 
         // 写入 Redis Hash
@@ -222,7 +231,7 @@ public class LearnerStudyImpl implements LearnerStudy {
         progressData.put("courseId", courseId.toString());
         progressData.put("coursePointId", coursePointId.toString());
         progressData.put("videoId", videoId.toString());
-        progressData.put("currentSeconds", request.currentSeconds().toString());
+        progressData.put("currentSeconds", String.valueOf(reportedCurrentSeconds));
         progressData.put("maxPositionSeconds", String.valueOf(currentMax));
         progressData.put("durationSeconds", request.durationSeconds().toString());
         progressData.put("eventType", request.eventType() != null ? request.eventType() : "AUTO");
@@ -245,6 +254,23 @@ public class LearnerStudyImpl implements LearnerStudy {
                 log.error("即时同步视频进度失败, userId={}, videoId={}", userId, videoId, e);
             }
         }
+
+        boolean completed = request.isVideoEnded()
+                || (request.durationSeconds() > 0 && currentMax >= request.durationSeconds() - 2);
+        BigDecimal progressPercent = BigDecimal.valueOf(Math.min(currentMax, request.durationSeconds()))
+                .multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(request.durationSeconds()), 2, RoundingMode.HALF_UP);
+
+        return VideoProgressVO.builder()
+                .videoId(videoId)
+                .learningStatus(completed ? "COMPLETED" : "LEARNING")
+                .progressPercent(completed ? BigDecimal.valueOf(100) : progressPercent)
+                .lastPositionSeconds(reportedCurrentSeconds)
+                .maxPositionSeconds(Math.min(currentMax, request.durationSeconds()))
+                .completed(completed)
+                .pointCompleted(false)
+                .courseCompleted(false)
+                .build();
     }
 
     /**
